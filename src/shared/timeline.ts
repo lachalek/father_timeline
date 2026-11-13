@@ -1,5 +1,6 @@
 export const DECK_SIZE = 9;
 export const MIN_DECK_SIZE = 4;
+export const STARTING_LIVES = 3;
 
 export type TimelineKind = 'event' | 'birth';
 
@@ -34,13 +35,23 @@ export type PlayingState = {
   upcoming: TimelineEvent;
   queue: TimelineEvent[];
   score: number;
+  lives: number;
   feedback: PlacementFeedback | null;
+};
+
+/** The hand is empty, but lives remain, so another page can still be dealt. */
+export type WaitingState = {
+  phase: 'waiting';
+  placed: PlacedCard[];
+  score: number;
+  lives: number;
 };
 
 export type DoneState = {
   phase: 'done';
   placed: PlacedCard[];
   score: number;
+  lives: number;
 };
 
 export type DeckResponse = {
@@ -212,9 +223,9 @@ export const selectDeck = (
 
 /** Adds later events without repeating a year already on the table or in hand. */
 export const addUpcoming = (
-  state: PlayingState | DoneState,
+  state: PlayingState | WaitingState | DoneState,
   events: readonly TimelineEvent[]
-): PlayingState | DoneState => {
+): PlayingState | WaitingState | DoneState => {
   const seen = new Set<number>();
   for (const card of state.placed) seen.add(card.event.year);
   if (state.phase === 'playing') {
@@ -227,7 +238,9 @@ export const addUpcoming = (
     seen.add(event.year);
     fresh.push(event);
   }
-  if (fresh.length === 0) return state;
+  if (fresh.length === 0 || (state.phase === 'done' && state.lives <= 0)) {
+    return state;
+  }
   if (state.phase === 'playing') {
     return { ...state, queue: [...state.queue, ...fresh] };
   }
@@ -239,6 +252,7 @@ export const addUpcoming = (
     upcoming,
     queue,
     score: state.score,
+    lives: state.lives,
     feedback: null,
   };
 };
@@ -250,13 +264,15 @@ export const startGame = (
   if (!anchor) return null;
   const placed: PlacedCard[] = [{ event: anchor, hit: null }];
   const [upcoming, ...queue] = rest;
-  if (!upcoming) return { phase: 'done', placed, score: 0 };
+  if (!upcoming)
+    return { phase: 'done', placed, score: 0, lives: STARTING_LIVES };
   return {
     phase: 'playing',
     placed,
     upcoming,
     queue,
     score: 0,
+    lives: STARTING_LIVES,
     feedback: null,
   };
 };
@@ -286,20 +302,32 @@ export const applyPlacement = (
  */
 export const resolveFeedback = (
   state: PlayingState
-): PlayingState | DoneState => {
+): PlayingState | WaitingState | DoneState => {
   if (!state.feedback) return state;
   const placed = insertAt(state.placed, state.feedback.correct, {
     event: state.upcoming,
     hit: state.feedback.hit,
   });
+  const lives = state.feedback.hit ? state.lives : state.lives - 1;
   const [upcoming, ...queue] = state.queue;
-  if (!upcoming) return { phase: 'done', placed, score: state.score };
+  if (lives <= 0) {
+    return {
+      phase: 'done',
+      placed,
+      score: state.score,
+      lives: 0,
+    };
+  }
+  if (!upcoming) {
+    return { phase: 'waiting', placed, score: state.score, lives };
+  }
   return {
     phase: 'playing',
     placed,
     upcoming,
     queue,
     score: state.score,
+    lives,
     feedback: null,
   };
 };

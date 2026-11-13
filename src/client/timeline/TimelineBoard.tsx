@@ -202,7 +202,7 @@ export const TimelineBoard = ({
       >
         <div
           role="group"
-          aria-label="Timeline"
+          aria-label="Father Timeline"
           className={
             layout === 'row'
               ? 'relative flex min-h-48 items-center'

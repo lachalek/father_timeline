@@ -1,4 +1,4 @@
-## Timeline
+## Father Timeline
 
 A Reddit game. One historical event starts on the line. Each round, drag the next event into a gap — before, after, or between the cards already placed. A right gap scores +1. A wrong gap scores −1, and the event still lands on its true year so the line stays honest.
 

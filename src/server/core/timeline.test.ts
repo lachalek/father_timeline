@@ -46,7 +46,9 @@ const seeded = (seed: number): (() => number) => {
   };
 };
 
-const asPlaying = (state: ReturnType<typeof startGame>): PlayingState => {
+const asPlaying = (
+  state: ReturnType<typeof resolveFeedback> | ReturnType<typeof startGame>
+): PlayingState => {
   assert.ok(state);
   assert.equal(state.phase, 'playing');
   if (!state || state.phase !== 'playing') {
@@ -125,16 +127,19 @@ describe('timeline placement', () => {
     assert.equal(missed.feedback?.correct, 0);
     assert.equal(applyPlacement(missed, 0), missed);
 
-    const done = resolveFeedback(missed);
-    assert.equal(done.phase, 'done');
-    if (done.phase !== 'done') return;
+    const held = resolveFeedback(missed);
+    assert.equal(held.phase, 'waiting');
+    if (held.phase !== 'waiting') return;
     assert.deepEqual(
-      done.placed.map((card) => card.event.year),
+      held.placed.map((card) => card.event.year),
       [1400, 1500]
     );
-    assert.equal(done.placed[0]?.hit, false);
-    assert.equal(done.placed[1]?.hit, null);
-    assert.equal(done.score, -1);
+    assert.equal(held.placed[0]?.hit, false);
+    assert.equal(held.placed[1]?.hit, null);
+    assert.equal(held.score, -1);
+    assert.equal(held.lives, 2);
+    const continued = addUpcoming(held, [event(1600, 'Next')]);
+    assert.equal(continued.phase, 'playing');
   });
 
   it('lets a later round land between two events', () => {
@@ -161,14 +166,15 @@ describe('timeline placement', () => {
     );
     const wrongGap = applyPlacement(state, 0);
     assert.equal(wrongGap.score, 1);
-    const done = resolveFeedback(wrongGap);
-    assert.equal(done.phase, 'done');
-    if (done.phase !== 'done') return;
+    const held = resolveFeedback(wrongGap);
+    assert.equal(held.phase, 'waiting');
+    if (held.phase !== 'waiting') return;
     assert.deepEqual(
-      done.placed.map((card) => card.event.year),
+      held.placed.map((card) => card.event.year),
       [1000, 1500, 1700, 2000]
     );
-    assert.equal(done.placed[2]?.hit, false);
+    assert.equal(held.placed[2]?.hit, false);
+    assert.equal(held.lives, 2);
   });
 
   it('stays sorted even when every guess is the first gap', () => {
@@ -178,7 +184,7 @@ describe('timeline placement', () => {
       ),
       () => 0.42
     );
-    let state = startGame(deck);
+    let state: ReturnType<typeof resolveFeedback> | null = startGame(deck);
     assert.ok(state);
     let guard = 0;
     while (state && state.phase === 'playing' && guard < 20) {
@@ -186,13 +192,50 @@ describe('timeline placement', () => {
       state = resolveFeedback(applyPlacement(state, 0));
     }
     assert.ok(state);
-    assert.equal(state?.phase, 'done');
-    if (!state || state.phase !== 'done') return;
+    assert.notEqual(state?.phase, 'playing');
+    if (!state || state.phase === 'playing') return;
     const years = state.placed.map((card) => card.event.year);
     assert.deepEqual(
       years,
       [...years].sort((left, right) => left - right)
     );
+  });
+
+  it('ends the line after three misses', () => {
+    let state = asPlaying(
+      startGame([
+        event(1500, 'Anchor'),
+        event(1600, 'First'),
+        event(1700, 'Second'),
+        event(1800, 'Third'),
+        event(1900, 'Fourth'),
+        event(2000, 'Waiting'),
+      ])
+    );
+    assert.equal(state.lives, 3);
+    const correct = resolveFeedback(applyPlacement(state, 1));
+    assert.equal(correct.phase, 'playing');
+    if (correct.phase !== 'playing') return;
+    assert.equal(correct.lives, 3);
+    state = correct;
+    for (let miss = 0; miss < 3; miss += 1) {
+      const next = resolveFeedback(applyPlacement(state, 0));
+      if (miss < 2) {
+        assert.equal(next.phase, 'playing');
+        if (next.phase !== 'playing') return;
+        assert.equal(next.lives, 2 - miss);
+        state = next;
+      } else {
+        assert.equal(next.phase, 'done');
+        if (next.phase !== 'done') return;
+        assert.equal(next.lives, 0);
+        assert.equal(
+          next.placed.some((card) => card.event.year === 2000),
+          false
+        );
+        assert.equal(addUpcoming(next, [event(1950, 'Too late')]), next);
+      }
+    }
   });
 
   it('appends later events and can resume a finished line', () => {
@@ -213,7 +256,7 @@ describe('timeline placement', () => {
       guard += 1;
       finished = resolveFeedback(applyPlacement(finished, 0));
     }
-    assert.equal(finished.phase, 'done');
+    assert.equal(finished.phase, 'waiting');
     const resumed = addUpcoming(finished, [event(1930, 'After')]);
     assert.equal(resumed.phase, 'playing');
     if (resumed.phase !== 'playing') return;

@@ -3,40 +3,40 @@ import './index.css';
 import { navigateTo, requestExpandedMode } from '@devvit/web/client';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { FatherTime } from './timeline/FatherTime';
+
+const WIKIPEDIA_DONATE =
+  'https://donate.wikimedia.org/w/index.php?title=Special:LandingPage&country=US&uselang=en&wmf_medium=spontaneous&wmf_source=fr-redir&wmf_campaign=spontaneous';
 
 export const Splash = () => {
   return (
-    <div className="game-shell flex h-full min-h-0 flex-col items-center justify-center gap-3 px-5 py-4 text-center">
-      <p className="text-[0.68rem] tracking-[0.22em] text-[var(--muted)] uppercase">
-        A history game
-      </p>
-      <h1 className="font-display text-4xl leading-none">Timeline</h1>
-      <p className="max-w-sm text-sm leading-snug text-[var(--muted)]">
-        Choose easy, medium, or hard, then drag each event into place.
-      </p>
-      <div aria-hidden className="flex items-center gap-2 py-1">
-        <span className="h-2.5 w-2.5 rounded-full bg-[var(--accent)]" />
-        <span className="h-0.5 w-8 bg-[var(--line)]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[var(--ink)]" />
-        <span className="h-0.5 w-8 bg-[var(--line)]" />
-        <span className="h-2.5 w-2.5 rounded-full bg-[var(--ink)]" />
+    <div className="game-shell flex h-full min-h-0 items-center justify-center px-4 py-3">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        <FatherTime className="h-32" />
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="logo-title text-[2.75rem]">
+            Father
+            <span className="block text-[var(--accent)]">Timeline</span>
+          </h1>
+          <p className="text-sm text-[var(--muted)]">
+            Powered by{' '}
+            <button
+              type="button"
+              className="cursor-pointer font-semibold text-[var(--ink)] underline"
+              onClick={() => navigateTo(WIKIPEDIA_DONATE)}
+            >
+              Wikipedia
+            </button>
+          </p>
+          <button
+            type="button"
+            className="btn"
+            onClick={(event) => requestExpandedMode(event.nativeEvent, 'game')}
+          >
+            Play
+          </button>
+        </div>
       </div>
-      <button
-        type="button"
-        className="btn"
-        onClick={(event) => requestExpandedMode(event.nativeEvent, 'game')}
-      >
-        Play
-      </button>
-      <button
-        type="button"
-        className="cursor-pointer text-xs text-[var(--muted)] underline"
-        onClick={() =>
-          navigateTo('https://en.wikipedia.org/wiki/Wikipedia:On_this_day')
-        }
-      >
-        Events from Wikipedia
-      </button>
     </div>
   );
 };

@@ -27,7 +27,7 @@
     "items": [
       {
         "label": "Create a new post",
-        "description": "Timeline: place historical events from Wikipedia",
+        "description": "Father Timeline: place historical events from Wikipedia",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"

@@ -12,6 +12,8 @@ import {
   type PlacedCard,
 } from '../../shared/timeline';
 import { ActiveCard } from './ActiveCard';
+import { FatherTime } from './FatherTime';
+import { Lives } from './Lives';
 import { TimelineBoard } from './TimelineBoard';
 import { useAspectRatio } from './useAspectRatio';
 import { useCardDrag } from './useCardDrag';
@@ -57,7 +59,9 @@ export const TimelineGame = () => {
   }, [placedKey]);
 
   const score =
-    status.phase === 'playing' || status.phase === 'done'
+    status.phase === 'playing' ||
+    status.phase === 'waiting' ||
+    status.phase === 'done'
       ? status.game.score
       : null;
   const scoreColor =
@@ -71,7 +75,16 @@ export const TimelineGame = () => {
       ? null
       : `${playing.placed.length} of ${playing.placed.length + playing.queue.length}`;
   const feedback = playing?.feedback ?? null;
-  const showBoard = status.phase === 'playing' || status.phase === 'done';
+  const showBoard =
+    status.phase === 'playing' ||
+    status.phase === 'waiting' ||
+    status.phase === 'done';
+  const lives =
+    status.phase === 'playing' ||
+    status.phase === 'waiting' ||
+    status.phase === 'done'
+      ? status.game.lives
+      : null;
 
   return (
     <div
@@ -81,22 +94,22 @@ export const TimelineGame = () => {
       className="game-shell flex h-full min-h-0 flex-col"
     >
       <header
-        className={`flex shrink-0 items-start justify-between gap-3 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}
+        className={`relative z-30 flex shrink-0 items-start justify-between gap-3 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}
       >
         <div className="min-w-0">
-          <h1
-            className={`font-display leading-none ${compact ? 'text-2xl' : 'text-3xl'}`}
-          >
-            Timeline
+          <h1 className={`logo-title ${compact ? 'text-2xl' : 'text-[2rem]'}`}>
+            Father Timeline
           </h1>
           <p className="mt-1 text-xs leading-snug text-[var(--muted)]">
             {status.phase === 'choose'
               ? 'Pick how well known the pages should be.'
               : status.phase === 'done'
-                ? 'Every event is on its true year.'
+                ? lives === 0
+                  ? 'Father Time smashed the last hourglass.'
+                  : 'Every event is on its true year.'
                 : compact
-                  ? 'Drag or tap a gap. Right +1, wrong −1.'
-                  : 'Drag into a gap, or tap one. Right +1, wrong −1.'}{' '}
+                  ? 'Drag or tap a gap. Three misses end it.'
+                  : 'Drag into a gap, or tap one. Three misses end it.'}{' '}
             <button
               type="button"
               className="cursor-pointer underline"
@@ -111,7 +124,14 @@ export const TimelineGame = () => {
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
+          {lives !== null ? (
+            <Lives
+              lives={lives}
+              breaking={feedback !== null && !feedback.hit}
+              compact={compact}
+            />
+          ) : null}
+          <p className="mt-1 text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
             Score
           </p>
           <p
@@ -204,6 +224,16 @@ export const TimelineGame = () => {
         />
       ) : null}
 
+      {status.phase === 'waiting' ? (
+        <div
+          className={`shrink-0 border-t border-[var(--card-line)] bg-[var(--paper)] text-center ${compact ? 'px-3 py-3' : 'px-4 py-4'}`}
+        >
+          <p className="loading-line text-sm text-[var(--muted)]">
+            Gathering the next page…
+          </p>
+        </div>
+      ) : null}
+
       {playing ? (
         <div
           className={`shrink-0 border-t border-[var(--card-line)] bg-[var(--paper)] ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}
@@ -222,6 +252,7 @@ export const TimelineGame = () => {
       {status.phase === 'done' ? (
         <Result
           score={status.game.score}
+          lives={status.game.lives}
           placed={status.game.placed}
           onAgain={status.reload}
           onChange={status.chooseAgain}
@@ -259,8 +290,9 @@ const ModePicker = ({
 }) => (
   <div
     data-testid="mode-picker"
-    className="flex flex-1 flex-col items-center justify-center px-4 py-4"
+    className={`flex min-h-0 flex-1 items-center justify-center ${layout === 'row' ? 'gap-8 px-6' : 'flex-col gap-4 px-4 py-3'}`}
   >
+    <FatherTime className={compact ? 'h-32' : 'h-56'} />
     <div
       className={
         layout === 'row'
@@ -295,11 +327,13 @@ const ModePicker = ({
 
 const Result = ({
   score,
+  lives,
   placed,
   onAgain,
   onChange,
 }: {
   score: number;
+  lives: number;
   placed: PlacedCard[];
   onAgain: () => void;
   onChange: () => void;
@@ -326,6 +360,7 @@ const Result = ({
           {formatScore(score)}
         </p>
         <p className="mt-1 text-sm text-[var(--muted)]">
+          {lives === 0 ? 'Out of hourglasses · ' : ''}
           {right} right · {wrong} wrong
         </p>
       </div>

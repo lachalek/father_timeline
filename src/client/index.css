@@ -160,11 +160,82 @@ body,
   animation: pulse-line 1.2s ease-in-out infinite;
 }
 
+.logo-title {
+  font-family: Impact, Haettenschweiler, 'Arial Black', sans-serif;
+  letter-spacing: 0.03em;
+  line-height: 0.84;
+  text-shadow: 0 3px 0 rgb(156 61 28 / 18%);
+}
+
+.father-time.is-smashing {
+  transform-origin: 22% 46%;
+  animation: father-smash 1.45s ease-out;
+}
+
+.hourglass.is-breaking .glass-top {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: shard-up 0.85s 0.28s ease-in forwards;
+}
+
+.hourglass.is-breaking .glass-bottom {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: shard-down 0.85s 0.28s ease-in forwards;
+}
+
+.hourglass.is-breaking .glass-cap {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: shard-spin 0.85s 0.28s ease-in forwards;
+}
+
+@keyframes father-smash {
+  0% {
+    transform: rotate(-12deg);
+  }
+  46% {
+    transform: rotate(7deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes shard-up {
+  to {
+    opacity: 0;
+    transform: translate(-16px, -20px) rotate(-36deg) scale(0.7);
+  }
+}
+
+@keyframes shard-down {
+  to {
+    opacity: 0;
+    transform: translate(16px, 18px) rotate(40deg) scale(0.7);
+  }
+}
+
+@keyframes shard-spin {
+  to {
+    opacity: 0;
+    transform: translate(6px, 22px) rotate(80deg) scale(0.8);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .card-enter,
   .shake,
   .slot-glow,
-  .loading-line {
+  .loading-line,
+  .father-time,
+  .hourglass.is-breaking .glass-top,
+  .hourglass.is-breaking .glass-bottom,
+  .hourglass.is-breaking .glass-cap {
     animation: none;
+  }
+
+  .hourglass.is-breaking {
+    opacity: 0.35;
   }
 }
