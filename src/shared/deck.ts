@@ -13,7 +13,7 @@ import {
 import { parseCachedEvents, parseOnThisDay } from './wikipedia.ts';
 
 const USER_AGENT =
-  'TimelineGuesser/1.0 (Reddit Devvit game; educational; +https://developers.reddit.com)';
+  'FatherTimeline/1.0 (Reddit Devvit game; educational; +https://developers.reddit.com)';
 
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const VIEWS_TTL_MS = 14 * 24 * 60 * 60 * 1000;

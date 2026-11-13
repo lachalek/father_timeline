@@ -1,6 +1,6 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "timeline-guesser",
+  "name": "father-timeline",
   "permissions": {
     "http": {
       "enable": true,
@@ -52,6 +52,6 @@
     "build": "vite build"
   },
   "dev": {
-    "subreddit": "timeline_guesser_dev"
+    "subreddit": "father_timeline_dev"
   }
 }

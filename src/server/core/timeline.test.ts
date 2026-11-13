@@ -503,7 +503,7 @@ describe('fetchDeck', () => {
     assert.equal(viewCalls.length, 1);
     assert.ok(viewCalls[0]?.includes('Chronicle_0'));
     assert.ok(onThisDay.every((url) => url.includes('/events/')));
-    assert.ok(agents.every((agent) => agent?.includes('TimelineGuesser')));
+    assert.ok(agents.every((agent) => agent?.includes('FatherTimeline')));
     assert.equal(deck.length, 9);
     assert.equal(new Set(deck.map((card) => card.year)).size, 9);
     assert.ok(deck.every((card) => card.kind === 'event'));
