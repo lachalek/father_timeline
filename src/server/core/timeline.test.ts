@@ -116,14 +116,14 @@ describe('timeline placement', () => {
     assert.equal(ordered[0]?.year, 1600);
   });
 
-  it('scores a miss as minus one and still inserts the true year', () => {
+  it('a miss costs a life and still inserts the true year', () => {
     const started = asPlaying(
       startGame([event(1500, 'Anchor'), event(1400, 'Earlier')])
     );
     const ignored = applyPlacement(started, 5);
     assert.equal(ignored, started);
     const missed = applyPlacement(started, 1);
-    assert.equal(missed.score, -1);
+    assert.equal(missed.score, 0);
     assert.equal(missed.feedback?.correct, 0);
     assert.equal(applyPlacement(missed, 0), missed);
 
@@ -136,7 +136,7 @@ describe('timeline placement', () => {
     );
     assert.equal(held.placed[0]?.hit, false);
     assert.equal(held.placed[1]?.hit, null);
-    assert.equal(held.score, -1);
+    assert.equal(held.score, 0);
     assert.equal(held.lives, 2);
     const continued = addUpcoming(held, [event(1600, 'Next')]);
     assert.equal(continued.phase, 'playing');
@@ -165,7 +165,7 @@ describe('timeline placement', () => {
       2
     );
     const wrongGap = applyPlacement(state, 0);
-    assert.equal(wrongGap.score, 1);
+    assert.equal(wrongGap.score, 2);
     const held = resolveFeedback(wrongGap);
     assert.equal(held.phase, 'waiting');
     if (held.phase !== 'waiting') return;

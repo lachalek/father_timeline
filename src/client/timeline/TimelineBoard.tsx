@@ -14,6 +14,7 @@ type TimelineBoardProps = {
   interactive: boolean;
   locked: boolean;
   onPlace: (slot: number) => void;
+  hint?: string | null;
 };
 
 const slotLabel = (index: number, placed: readonly PlacedCard[]): string => {
@@ -144,6 +145,7 @@ export const TimelineBoard = ({
   interactive,
   locked,
   onPlace,
+  hint = null,
 }: TimelineBoardProps) => {
   const nodes: ReactNode[] = [];
   for (let index = 0; index <= placed.length; index += 1) {
@@ -219,6 +221,14 @@ export const TimelineBoard = ({
           />
           {nodes}
         </div>
+        {layout === 'column' && hint ? (
+          <p
+            data-testid="first-hint"
+            className="flex w-full max-w-xs flex-1 items-center justify-center px-2 py-4 text-center text-sm leading-snug text-[var(--muted)]"
+          >
+            {hint}
+          </p>
+        ) : null}
       </div>
     </div>
   );

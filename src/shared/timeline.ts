@@ -135,7 +135,7 @@ export const correctSlotIndex = (
   return placed.length;
 };
 
-export const scoreForPlacement = (hit: boolean): number => (hit ? 1 : -1);
+export const scoreForPlacement = (hit: boolean): number => (hit ? 1 : 0);
 
 export const insertAt = <T>(
   items: readonly T[],

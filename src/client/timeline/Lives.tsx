@@ -5,19 +5,26 @@ export const Lives = ({
   lives,
   breaking,
   compact,
+  dense = false,
 }: {
   lives: number;
   breaking: boolean;
   compact: boolean;
+  dense?: boolean;
 }) => {
   const breakingIndex = breaking ? lives - 1 : -1;
   return (
     <div className="flex items-end justify-end">
       <div
-        className="relative z-20 flex items-end gap-1"
+        className="relative z-20 flex items-center gap-1"
         data-testid="lives"
         aria-label={`${Math.max(0, lives - (breaking ? 1 : 0))} of ${STARTING_LIVES} hourglasses`}
       >
+        <span
+          className={`leading-none text-[var(--muted)] ${dense ? 'text-[0.65rem]' : 'text-xs'}`}
+        >
+          Lives:
+        </span>
         {Array.from({ length: STARTING_LIVES }, (_, index) => {
           const state =
             index === breakingIndex
@@ -38,7 +45,8 @@ export const Lives = ({
           return (
             <Hourglass
               key={index}
-              compact={compact}
+              compact={compact || dense}
+              dense={dense}
               breaking={state === 'breaking'}
               index={index}
             />
@@ -47,7 +55,9 @@ export const Lives = ({
       </div>
       <FatherTime
         smashing={breaking}
-        className={compact ? '-ml-2 h-24' : '-ml-3 h-32'}
+        className={
+          dense ? '-ml-1 h-14' : compact ? '-ml-2 h-24' : '-ml-3 h-32'
+        }
       />
     </div>
   );
@@ -56,10 +66,12 @@ export const Lives = ({
 const Hourglass = ({
   breaking,
   compact,
+  dense,
   index,
 }: {
   breaking: boolean;
   compact: boolean;
+  dense: boolean;
   index: number;
 }) => (
   <svg
@@ -67,8 +79,8 @@ const Hourglass = ({
     data-testid={`life-${index}`}
     data-state={breaking ? 'breaking' : 'full'}
     className={`hourglass text-[var(--ink)] ${breaking ? 'is-breaking' : ''}`}
-    width={compact ? 20 : 26}
-    height={compact ? 28 : 36}
+    width={dense ? 14 : compact ? 20 : 26}
+    height={dense ? 20 : compact ? 28 : 36}
     aria-hidden
   >
     <g className="glass-top">

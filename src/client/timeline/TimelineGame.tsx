@@ -23,6 +23,7 @@ export const TimelineGame = () => {
   const shellRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const { layout, compact } = useAspectRatio(shellRef);
+  const mobile = layout === 'column';
   const status = useTimelineGame();
   const playing = status.phase === 'playing' ? status.game : null;
   const { drag, handlers } = useCardDrag({
@@ -70,10 +71,6 @@ export const TimelineGame = () => {
       : score > 0
         ? 'text-[var(--good)]'
         : 'text-[var(--miss)]';
-  const round =
-    playing === null
-      ? null
-      : `${playing.placed.length} of ${playing.placed.length + playing.queue.length}`;
   const feedback = playing?.feedback ?? null;
   const showBoard =
     status.phase === 'playing' ||
@@ -85,6 +82,16 @@ export const TimelineGame = () => {
     status.phase === 'done'
       ? status.game.lives
       : null;
+  const guidance =
+    status.phase === 'choose'
+      ? 'Pick how popular the wiki pages should be.'
+      : status.phase === 'done'
+        ? lives === 0
+          ? 'Father Time smashed the last hourglass.'
+          : 'Every event is on its true year.'
+        : mobile
+          ? null
+          : 'Drag into a gap, or tap one. Three misses end it.';
 
   return (
     <div
@@ -94,59 +101,74 @@ export const TimelineGame = () => {
       className="game-shell flex h-full min-h-0 flex-col"
     >
       <header
-        className={`relative z-30 flex shrink-0 items-start justify-between gap-3 ${compact ? 'px-3 py-2' : 'px-4 py-3'}`}
+        className={`relative z-30 flex shrink-0 justify-between ${mobile ? 'items-center gap-2 px-3 py-1' : 'items-start gap-3 px-4 py-3'}`}
       >
         <div className="min-w-0">
-          <h1 className={`logo-title ${compact ? 'text-2xl' : 'text-[2rem]'}`}>
+          <h1
+            className={`logo-title ${mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
+          >
             Father Timeline
           </h1>
-          <p className="mt-1 text-xs leading-snug text-[var(--muted)]">
-            {status.phase === 'choose'
-              ? 'Pick how well known the pages should be.'
-              : status.phase === 'done'
-                ? lives === 0
-                  ? 'Father Time smashed the last hourglass.'
-                  : 'Every event is on its true year.'
-                : compact
-                  ? 'Drag or tap a gap. Three misses end it.'
-                  : 'Drag into a gap, or tap one. Three misses end it.'}{' '}
-            <button
-              type="button"
-              className="cursor-pointer underline"
-              onClick={() =>
-                navigateTo(
-                  'https://en.wikipedia.org/wiki/Wikipedia:On_this_day'
-                )
-              }
-            >
-              Wikipedia
-            </button>
-          </p>
+          {mobile && score !== null ? (
+            <p className="mt-1 flex items-baseline gap-1.5 leading-none">
+              <span className="text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
+                Score
+              </span>
+              <span
+                data-testid="score"
+                className={`font-display text-lg tabular-nums ${scoreColor}`}
+              >
+                {formatScore(score)}
+              </span>
+            </p>
+          ) : null}
+          {guidance ? (
+            <p className="mt-1 text-xs leading-snug text-[var(--muted)]">
+              {guidance}{' '}
+              <button
+                type="button"
+                className="cursor-pointer underline"
+                onClick={() =>
+                  navigateTo(
+                    'https://en.wikipedia.org/wiki/Wikipedia:On_this_day'
+                  )
+                }
+              >
+                Wikipedia
+              </button>
+            </p>
+          ) : null}
         </div>
-        <div className="shrink-0 text-right">
+        <div className={`shrink-0 ${mobile ? '' : 'text-right'}`}>
           {lives !== null ? (
             <Lives
               lives={lives}
               breaking={feedback !== null && !feedback.hit}
               compact={compact}
+              dense={mobile}
             />
           ) : null}
-          <p className="mt-1 text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
-            Score
-          </p>
-          <p
-            data-testid="score"
-            className={`font-display text-3xl leading-none tabular-nums ${scoreColor}`}
-          >
-            {score === null ? '—' : formatScore(score)}
-          </p>
-          {status.phase !== 'choose' ? (
-            <p data-testid="round" className="mt-1 text-xs text-[var(--muted)]">
-              {round
-                ? `${DIFFICULTY_BANDS[status.difficulty].label} · ${round}`
-                : DIFFICULTY_BANDS[status.difficulty].label}
-            </p>
-          ) : null}
+          {mobile ? null : (
+            <>
+              <p className="mt-1 text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
+                Score
+              </p>
+              <p
+                data-testid="score"
+                className={`font-display text-3xl leading-none tabular-nums ${scoreColor}`}
+              >
+                {score === null ? '—' : formatScore(score)}
+              </p>
+              {status.phase !== 'choose' ? (
+                <p
+                  data-testid="difficulty"
+                  className="mt-1 text-xs text-[var(--muted)]"
+                >
+                  {DIFFICULTY_BANDS[status.difficulty].label}
+                </p>
+              ) : null}
+            </>
+          )}
         </div>
       </header>
 
@@ -157,7 +179,7 @@ export const TimelineGame = () => {
           className={`shrink-0 px-4 py-2 text-center text-sm font-semibold ${feedback.hit ? 'bg-[var(--good-bg)] text-[var(--good)]' : 'bg-[var(--miss-bg)] text-[var(--miss)]'}`}
         >
           {feedback.hit
-            ? 'That gap is right.'
+            ? 'Correct!'
             : `That belongs in ${formatYear(feedback.year)}.`}
         </p>
       ) : null}
@@ -221,6 +243,14 @@ export const TimelineGame = () => {
           interactive={playing !== null}
           locked={feedback !== null}
           onPlace={status.place}
+          hint={
+            mobile &&
+            playing !== null &&
+            playing.placed.length === 1 &&
+            playing.feedback === null
+              ? 'Drag the event onto the timeline, or tap the timeline to place the event.'
+              : null
+          }
         />
       ) : null}
 

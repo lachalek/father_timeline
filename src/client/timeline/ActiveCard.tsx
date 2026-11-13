@@ -50,7 +50,7 @@ export const ActiveCard = ({
         {feedback
           ? feedback.hit
             ? 'Right gap. +1'
-            : 'Wrong gap. −1'
+            : 'Wrong gap.'
           : 'Drag onto the line, or tap a gap.'}
       </p>
     </article>

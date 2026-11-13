@@ -1,6 +1,6 @@
 ## Father Timeline
 
-A Reddit game. One historical event starts on the line. Each round, drag the next event into a gap — before, after, or between the cards already placed. A right gap scores +1. A wrong gap scores −1, and the event still lands on its true year so the line stays honest.
+A Reddit game. One historical event starts on the line. Each round, drag the next event into a gap — before, after, or between the cards already placed. A right gap scores +1. A wrong gap costs a life, and the event still lands on its true year so the line stays honest.
 
 Events and births come from Wikipedia's [On this day](https://en.wikipedia.org/api/rest_v1/#/Feed/onThisDay) feed. A game starts by choosing a difficulty. Easy keeps pages with at least a million views a year, medium keeps 100,000 up to one million, and hard keeps 10,000 up to 100,000. The opening hand is one day's sample. More cards load while the first round is underway. Counts are a year-pace from the latest 60 days of pageviews, which Wikipedia can return for many pages in one request.
 
