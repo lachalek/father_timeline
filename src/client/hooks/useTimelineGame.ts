@@ -14,7 +14,8 @@ import {
 } from '../../shared/timeline';
 
 const HIT_FEEDBACK_MS = 1100;
-const MISS_FEEDBACK_MS = 1600;
+/** Covers the scythe swing, impact hold, shatter, and the lives sliding in. */
+const MISS_FEEDBACK_MS = 1900;
 
 type Status =
   | { phase: 'choose' }

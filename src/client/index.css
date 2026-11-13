@@ -167,59 +167,165 @@ body,
   text-shadow: 0 3px 0 rgb(156 61 28 / 18%);
 }
 
-.father-time.is-smashing {
-  transform-origin: 22% 46%;
-  animation: father-smash 1.45s ease-out;
+.father-scythe {
+  transform-origin: 12.8% 39%;
 }
 
-.hourglass.is-breaking .glass-top {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: shard-up 0.85s 0.28s ease-in forwards;
+.father-time.is-smashing .father-scythe {
+  animation: scythe-swing 1.7s linear forwards;
 }
 
-.hourglass.is-breaking .glass-bottom {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: shard-down 0.85s 0.28s ease-in forwards;
-}
-
-.hourglass.is-breaking .glass-cap {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: shard-spin 0.85s 0.28s ease-in forwards;
-}
-
-@keyframes father-smash {
+/* 38% to 53% holds the blade on the glass before it bursts. */
+@keyframes scythe-swing {
   0% {
-    transform: rotate(-12deg);
+    transform: none;
+    animation-timing-function: ease-in-out;
   }
-  46% {
-    transform: rotate(7deg);
+  16% {
+    transform: rotate(26deg);
+    animation-timing-function: cubic-bezier(0.35, 0, 0.9, 0.25);
+  }
+  38% {
+    transform: rotate(-74deg);
+    animation-timing-function: linear;
+  }
+  53% {
+    transform: rotate(-74deg);
+    animation-timing-function: ease-out;
   }
   100% {
     transform: none;
   }
 }
 
-@keyframes shard-up {
-  to {
-    opacity: 0;
-    transform: translate(-16px, -20px) rotate(-36deg) scale(0.7);
+.hourglass.is-breaking .glass-intact {
+  animation:
+    impact-flash 0.12s 0.64s linear,
+    glass-pop 0.05s 0.9s linear forwards;
+}
+
+.glass-burst .shard,
+.glass-burst .particle {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.hourglass.is-breaking .glass-burst .shard,
+.hourglass.is-breaking .glass-burst .particle {
+  animation: shard-burst 0.62s 0.9s ease-out forwards;
+}
+
+.glass-burst .shard:nth-child(1) {
+  --dx: -18px;
+  --dy: -24px;
+  --spin: -70deg;
+}
+.glass-burst .shard:nth-child(2) {
+  --dx: 16px;
+  --dy: -20px;
+  --spin: 55deg;
+}
+.glass-burst .shard:nth-child(3) {
+  --dx: -22px;
+  --dy: 6px;
+  --spin: -40deg;
+}
+.glass-burst .shard:nth-child(4) {
+  --dx: 18px;
+  --dy: 14px;
+  --spin: 85deg;
+}
+.glass-burst .shard:nth-child(5) {
+  --dx: -6px;
+  --dy: 22px;
+  --spin: 30deg;
+}
+.glass-burst .particle:nth-child(6) {
+  --dx: -14px;
+  --dy: 16px;
+  --spin: 20deg;
+}
+.glass-burst .particle:nth-child(7) {
+  --dx: 8px;
+  --dy: 20px;
+  --spin: -15deg;
+}
+.glass-burst .particle:nth-child(8) {
+  --dx: -24px;
+  --dy: -8px;
+  --spin: 40deg;
+}
+.glass-burst .particle:nth-child(9) {
+  --dx: 22px;
+  --dy: -6px;
+  --spin: -35deg;
+}
+.glass-burst .particle:nth-child(10) {
+  --dx: 2px;
+  --dy: -26px;
+  --spin: 10deg;
+}
+.glass-burst .particle:nth-child(11) {
+  --dx: -10px;
+  --dy: 26px;
+  --spin: 50deg;
+}
+.glass-burst .particle:nth-child(12) {
+  --dx: 12px;
+  --dy: 24px;
+  --spin: -50deg;
+}
+
+[data-life-size='dense'] {
+  --life-slide: 18px;
+}
+[data-life-size='compact'] {
+  --life-slide: 24px;
+}
+[data-life-size='full'] {
+  --life-slide: 30px;
+}
+
+.is-closing {
+  animation: lives-slide 0.4s 1.15s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes impact-flash {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(2.6);
+  }
+  100% {
+    filter: brightness(1);
   }
 }
 
-@keyframes shard-down {
+@keyframes glass-pop {
   to {
     opacity: 0;
-    transform: translate(16px, 18px) rotate(40deg) scale(0.7);
   }
 }
 
-@keyframes shard-spin {
-  to {
+@keyframes shard-burst {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
     opacity: 0;
-    transform: translate(6px, 22px) rotate(80deg) scale(0.8);
+    transform: translate(var(--dx), var(--dy)) rotate(var(--spin)) scale(0.35);
+  }
+}
+
+@keyframes lives-slide {
+  to {
+    transform: translateX(var(--life-slide));
   }
 }
 
@@ -228,14 +334,15 @@ body,
   .shake,
   .slot-glow,
   .loading-line,
-  .father-time,
-  .hourglass.is-breaking .glass-top,
-  .hourglass.is-breaking .glass-bottom,
-  .hourglass.is-breaking .glass-cap {
+  .father-scythe,
+  .hourglass.is-breaking .glass-intact,
+  .hourglass.is-breaking .shard,
+  .hourglass.is-breaking .particle,
+  .is-closing {
     animation: none;
   }
 
-  .hourglass.is-breaking {
-    opacity: 0.35;
+  .hourglass.is-breaking .glass-intact {
+    opacity: 0;
   }
 }
