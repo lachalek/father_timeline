@@ -82,6 +82,9 @@ const removeOtherDates = (text: string): string =>
       .replace(DECADE, '')
   );
 
+/** A four-digit year left in the clue, whether or not it is this event's year. */
+const containsYear = (text: string): boolean => /\b\d{4}\b/.test(text);
+
 const withoutLeadingYear = (text: string, year: number): string => {
   const source = String(Math.abs(year));
   const pattern = new RegExp(`^${source}\\s*[\\u2013\\u2014-]\\s*`);
@@ -147,7 +150,7 @@ const parseItem = (
   const withoutAsides = removeDateAsides(decoded);
   if (mentionsYear(withoutAsides, year)) return null;
   const text = clip(removeOtherDates(withoutAsides), 280);
-  if (text.length < 12) return null;
+  if (text.length < 12 || containsYear(text)) return null;
   const page = firstPage(item);
   const articleTitle = page ? readString(page.title) : null;
   const title = clip(articleTitle ?? text, 90);

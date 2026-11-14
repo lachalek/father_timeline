@@ -302,6 +302,14 @@ describe('wikipedia events', () => {
         year: 1812,
         text: 'More than 2,200 people leave the city before winter.',
       },
+      {
+        year: 1960,
+        text: 'Indonesian President Sukarno dismisses the Dewan Perwakilan Rakyat (DPR), 1955',
+      },
+      {
+        year: 1987,
+        text: 'After the 1986 People Power Revolution, the Philippines enacts a new constitution.',
+      },
       { year: 2027, text: 'A future fair opens its gates.' },
       { year: 12.5, text: 'This year is not a whole number.' },
       { year: 1880, text: 'Too short' },
@@ -336,6 +344,10 @@ describe('wikipedia events', () => {
     assert.equal(
       events[7]?.text,
       'More than 2,200 people leave the city before winter.'
+    );
+    assert.equal(
+      events.some((item) => /\b\d{4}\b/.test(item.text)),
+      false
     );
     const births = parseOnThisDay(payload, 'birth', 2026);
     assert.equal(births[0]?.title, 'Marie Curie');

@@ -6,24 +6,32 @@ export const Lives = ({
   breaking,
   compact,
   dense = false,
+  fullscreen = false,
 }: {
   lives: number;
   breaking: boolean;
   compact: boolean;
   dense?: boolean;
+  fullscreen?: boolean;
 }) => {
   const breakingIndex = breaking ? lives - 1 : -1;
-  const lifeSize = dense ? 'dense' : compact ? 'compact' : 'full';
+  const lifeSize = fullscreen
+    ? 'fullscreen'
+    : dense
+      ? 'dense'
+      : compact
+        ? 'compact'
+        : 'full';
   return (
     <div className="flex items-start justify-end">
       <div
-        className={`relative z-20 flex items-center gap-1 ${dense ? 'mt-3.5' : compact ? 'mt-7' : 'mt-9'}`}
+        className={`relative z-20 flex items-center ${fullscreen ? 'mt-14 gap-2' : dense ? 'mt-3.5 gap-1' : compact ? 'mt-7 gap-1' : 'mt-9 gap-1'}`}
         data-testid="lives"
         data-life-size={lifeSize}
         aria-label={`${Math.max(0, lives - (breaking ? 1 : 0))} of ${STARTING_LIVES} hourglasses`}
       >
         <span
-          className={`inline-block leading-none text-[var(--muted)] ${dense ? 'text-[0.65rem]' : 'text-xs'} ${breaking ? 'is-closing' : ''}`}
+          className={`inline-block leading-none text-[var(--muted)] ${fullscreen ? 'text-lg' : dense ? 'text-[0.65rem]' : 'text-xs'} ${breaking ? 'is-closing' : ''}`}
         >
           Lives:
         </span>
@@ -49,6 +57,7 @@ export const Lives = ({
               key={index}
               compact={compact || dense}
               dense={dense}
+              fullscreen={fullscreen}
               breaking={state === 'breaking'}
               closing={breaking && index < breakingIndex}
               index={index}
@@ -58,7 +67,15 @@ export const Lives = ({
       </div>
       <FatherTime
         smashing={breaking}
-        className={dense ? '-ml-1 h-14' : compact ? '-ml-2 h-24' : '-ml-3 h-32'}
+        className={
+          fullscreen
+            ? '-ml-5 h-56'
+            : dense
+              ? '-ml-1 h-14'
+              : compact
+                ? '-ml-2 h-24'
+                : '-ml-3 h-32'
+        }
       />
     </div>
   );
@@ -69,12 +86,14 @@ const Hourglass = ({
   closing,
   compact,
   dense,
+  fullscreen,
   index,
 }: {
   breaking: boolean;
   closing: boolean;
   compact: boolean;
   dense: boolean;
+  fullscreen: boolean;
   index: number;
 }) => (
   <span
@@ -86,8 +105,8 @@ const Hourglass = ({
       data-testid={`life-${index}`}
       data-state={breaking ? 'breaking' : 'full'}
       className={`hourglass overflow-visible text-[var(--ink)] ${breaking ? 'is-breaking' : ''}`}
-      width={dense ? 14 : compact ? 20 : 26}
-      height={dense ? 20 : compact ? 28 : 36}
+      width={fullscreen ? 48 : dense ? 14 : compact ? 20 : 26}
+      height={fullscreen ? 64 : dense ? 20 : compact ? 28 : 36}
       aria-hidden
     >
       <g className="glass-intact">

@@ -286,6 +286,9 @@ body,
 [data-life-size='full'] {
   --life-slide: 30px;
 }
+[data-life-size='fullscreen'] {
+  --life-slide: 56px;
+}
 
 .is-closing {
   animation: lives-slide 0.4s 1.15s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;

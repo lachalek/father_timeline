@@ -112,7 +112,7 @@ const loadDay = async (
   type: 'events' | 'births',
   day: Day
 ): Promise<TimelineEvent[]> => {
-  const key = `timeline:wiki:v3:${type}:${day.month}-${day.day}`;
+  const key = `timeline:wiki:v4:${type}:${day.month}-${day.day}`;
   const cached = await readCache(cache, key);
   if (cached) return cached;
   const kind = type === 'events' ? 'event' : 'birth';

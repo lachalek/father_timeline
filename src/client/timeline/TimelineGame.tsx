@@ -22,7 +22,7 @@ import { useTimelineGame } from '../hooks/useTimelineGame';
 export const TimelineGame = () => {
   const shellRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const { layout, compact } = useAspectRatio(shellRef);
+  const { layout, compact, fullscreen } = useAspectRatio(shellRef);
   const mobile = layout === 'column';
   const status = useTimelineGame();
   const playing = status.phase === 'playing' ? status.game : null;
@@ -91,21 +91,49 @@ export const TimelineGame = () => {
           : 'Every event is on its true year.'
         : mobile
           ? null
-          : 'Drag into a gap, or tap one. Three misses end it.';
+          : 'Drag the event onto the timeline, or tap the timeline to place the event.';
 
   return (
     <div
       ref={shellRef}
       data-testid="game"
       data-layout={layout}
+      data-fullscreen={fullscreen ? 'true' : 'false'}
       className="game-shell flex h-full min-h-0 flex-col"
     >
       <header
-        className={`relative z-30 flex shrink-0 justify-between ${mobile ? 'items-center gap-2 px-3 py-1' : 'items-start gap-3 px-4 py-3'}`}
+        className={
+          fullscreen
+            ? 'relative z-30 shrink-0 px-8 pt-5 pb-1'
+            : `relative z-30 flex shrink-0 justify-between ${mobile ? 'items-center gap-2 px-3 py-1' : 'items-start gap-3 px-4 py-3'}`
+        }
       >
-        <div className="min-w-0">
+        {fullscreen ? (
+          <div className="absolute top-5 right-8 text-right">
+            <p className="text-xs tracking-[0.18em] text-[var(--muted)] uppercase">
+              Score
+            </p>
+            <p
+              data-testid="score"
+              className={`font-display text-4xl leading-none tabular-nums ${scoreColor}`}
+            >
+              {score === null ? '—' : formatScore(score)}
+            </p>
+            {status.phase !== 'choose' ? (
+              <p
+                data-testid="difficulty"
+                className="mt-1 text-sm text-[var(--muted)]"
+              >
+                {DIFFICULTY_BANDS[status.difficulty].label}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <div
+          className={fullscreen ? 'flex flex-col items-center' : 'min-w-0'}
+        >
           <h1
-            className={`logo-title ${mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
+            className={`logo-title ${fullscreen ? 'pb-6 text-[4.25rem]' : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
           >
             Father Timeline
           </h1>
@@ -123,7 +151,9 @@ export const TimelineGame = () => {
             </p>
           ) : null}
           {guidance ? (
-            <p className="mt-1 text-xs leading-snug text-[var(--muted)]">
+            <p
+              className={`mt-1 leading-snug text-[var(--muted)] ${fullscreen ? 'text-center text-sm' : 'text-xs'}`}
+            >
               {guidance}{' '}
               <button
                 type="button"
@@ -138,38 +168,53 @@ export const TimelineGame = () => {
               </button>
             </p>
           ) : null}
-        </div>
-        <div className={`shrink-0 ${mobile ? '' : 'text-right'}`}>
-          {lives !== null ? (
+          {fullscreen && guidance ? (
+            <div className="h-12" aria-hidden>
+              <br />
+            </div>
+          ) : null}
+          {fullscreen && lives !== null ? (
             <Lives
               lives={lives}
               breaking={feedback !== null && !feedback.hit}
-              compact={compact}
-              dense={mobile}
+              compact={false}
+              fullscreen
             />
           ) : null}
-          {mobile ? null : (
-            <>
-              <p className="mt-1 text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
-                Score
-              </p>
-              <p
-                data-testid="score"
-                className={`font-display text-3xl leading-none tabular-nums ${scoreColor}`}
-              >
-                {score === null ? '—' : formatScore(score)}
-              </p>
-              {status.phase !== 'choose' ? (
-                <p
-                  data-testid="difficulty"
-                  className="mt-1 text-xs text-[var(--muted)]"
-                >
-                  {DIFFICULTY_BANDS[status.difficulty].label}
-                </p>
-              ) : null}
-            </>
-          )}
         </div>
+        {fullscreen ? null : (
+          <div className={`shrink-0 ${mobile ? '' : 'text-right'}`}>
+            {lives !== null ? (
+              <Lives
+                lives={lives}
+                breaking={feedback !== null && !feedback.hit}
+                compact={compact}
+                dense={mobile}
+              />
+            ) : null}
+            {mobile ? null : (
+              <>
+                <p className="mt-1 text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
+                  Score
+                </p>
+                <p
+                  data-testid="score"
+                  className={`font-display text-3xl leading-none tabular-nums ${scoreColor}`}
+                >
+                  {score === null ? '—' : formatScore(score)}
+                </p>
+                {status.phase !== 'choose' ? (
+                  <p
+                    data-testid="difficulty"
+                    className="mt-1 text-xs text-[var(--muted)]"
+                  >
+                    {DIFFICULTY_BANDS[status.difficulty].label}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
+        )}
       </header>
 
       {feedback ? (
