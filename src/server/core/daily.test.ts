@@ -4,6 +4,7 @@ import {
   bandCounts,
   DAILY_DECK_LIMIT,
   dailyDateKey,
+  dailyPublishWindow,
   dealQueue,
   displayName,
   enqueueEvents,
@@ -214,6 +215,22 @@ describe('daily deck', () => {
     assert.equal(placementProgress(1, 8), 0);
     assert.equal(placementProgress(5, 8), 0.5);
     assert.equal(placementProgress(9, 8), 1);
+    assert.equal(
+      dailyPublishWindow(new Date(Date.UTC(2026, 10, 15, 11, 0))),
+      'publish'
+    );
+    assert.equal(
+      dailyPublishWindow(new Date(Date.UTC(2026, 10, 15, 10, 0))),
+      'skip'
+    );
+    assert.equal(
+      dailyPublishWindow(new Date(Date.UTC(2026, 6, 15, 10, 0))),
+      'publish'
+    );
+    assert.equal(
+      dailyPublishWindow(new Date(Date.UTC(2026, 6, 15, 11, 0))),
+      'catch-up'
+    );
   });
 
   it('ends a fixed deck when the last card is placed', () => {

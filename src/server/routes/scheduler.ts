@@ -1,7 +1,8 @@
 import { redis, scheduler as jobs } from '@devvit/web/server';
 import { Hono } from 'hono';
-import { dailyDateKey } from '../../shared/daily.ts';
+import { dailyDateKey, dailyPublishWindow } from '../../shared/daily.ts';
 import { DIFFICULTIES } from '../../shared/difficulty.ts';
+import { dailyPostKey } from '../core/daily.ts';
 import { liveDaily, warmPool, type PoolFill } from '../core/liveDaily.ts';
 import { createPost } from '../core/post.ts';
 
@@ -37,6 +38,13 @@ const growUntilPaused = async (): Promise<PoolFill | null> => {
 };
 
 scheduler.post('/daily', async (c) => {
+  const now = new Date();
+  const publishWindow = dailyPublishWindow(now);
+  if (publishWindow === 'skip') return c.json({}, 200);
+  if (publishWindow === 'catch-up') {
+    const existing = await redis.get(dailyPostKey(dailyDateKey(now)));
+    if (existing) return c.json({}, 200);
+  }
   try {
     await createPost();
   } catch (error) {

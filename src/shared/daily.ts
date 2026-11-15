@@ -43,6 +43,32 @@ export const dailyDateKey = (now: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+export type DailyPublishWindow = 'publish' | 'catch-up' | 'skip';
+
+const easternPart = (now: Date, type: Intl.DateTimeFormatPartTypes): number => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const value = parts.find((part) => part.type === type)?.value;
+  const parsed = value === undefined ? Number.NaN : Number(value);
+  return Number.isInteger(parsed) ? parsed : -1;
+};
+
+/**
+ * Devvit cron is UTC. 6:00am America/New_York is 10:00 UTC in daylight time
+ * and 11:00 UTC in standard time, so the daily job wakes at both hours.
+ * Hour 7 only covers a 6:00 run that arrived late.
+ */
+export const dailyPublishWindow = (now: Date): DailyPublishWindow => {
+  const hour = easternPart(now, 'hour');
+  if (hour === 6) return 'publish';
+  if (hour === 7) return 'catch-up';
+  return 'skip';
+};
+
 export const formatDailyDate = (key: string): string => {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
   if (!match) return key;
