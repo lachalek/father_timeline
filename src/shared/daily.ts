@@ -364,6 +364,7 @@ export type DailyOverview = {
   date: string;
   loggedIn: boolean;
   levels: Record<Difficulty, LevelStanding>;
+  boards: Record<Difficulty, DailyBoard>;
 };
 
 export type DailyPlayingResponse = {
@@ -621,8 +622,15 @@ export const parseDailyOverview = (value: unknown): DailyOverview | null => {
   }
   if (typeof value.loggedIn !== 'boolean') return null;
   const levels = parseLevels(value.levels);
-  if (!levels) return null;
-  return { type: 'daily', date: value.date, loggedIn: value.loggedIn, levels };
+  const boards = parseBoards(value.boards);
+  if (!levels || !boards) return null;
+  return {
+    type: 'daily',
+    date: value.date,
+    loggedIn: value.loggedIn,
+    levels,
+    boards,
+  };
 };
 
 export const parseDailyPlaying = (

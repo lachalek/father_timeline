@@ -7,33 +7,41 @@ export const Lives = ({
   compact,
   dense = false,
   fullscreen = false,
+  settled = false,
+  defeated = false,
 }: {
   lives: number;
   breaking: boolean;
   compact: boolean;
   dense?: boolean;
   fullscreen?: boolean;
+  settled?: boolean;
+  defeated?: boolean;
 }) => {
   const breakingIndex = breaking ? lives - 1 : -1;
   const lifeSize = fullscreen
-    ? 'fullscreen'
+    ? settled
+      ? 'settled'
+      : 'fullscreen'
     : dense
       ? 'dense'
       : compact
         ? 'compact'
         : 'full';
   return (
-    <div className="flex items-start justify-end">
+    <div
+      className={`flex justify-end ${fullscreen && settled ? 'items-center' : 'items-start'}`}
+    >
       <div
-        className={`relative z-20 flex items-center ${fullscreen ? 'mt-14 gap-2' : dense ? 'mt-3.5 gap-1' : compact ? 'mt-7 gap-1' : 'mt-9 gap-1'}`}
+        className={`relative z-20 flex items-center ${fullscreen ? (settled ? 'mt-2 gap-2' : 'mt-14 gap-2') : dense ? 'mt-3.5 gap-1' : compact ? 'mt-7 gap-1' : 'mt-9 gap-1'}`}
         data-testid="lives"
         data-life-size={lifeSize}
         aria-label={`${Math.max(0, lives - (breaking ? 1 : 0))} of ${STARTING_LIVES} hourglasses`}
       >
         <span
-          className={`inline-block leading-none text-[var(--muted)] ${fullscreen ? 'text-lg' : dense ? 'text-[0.65rem]' : 'text-xs'} ${breaking ? 'is-closing' : ''}`}
+          className={`inline-block leading-none ${defeated && fullscreen ? 'text-2xl font-bold text-[var(--ink)]' : `text-[var(--muted)] ${fullscreen ? 'text-lg' : dense ? 'text-[0.65rem]' : 'text-xs'}`} ${breaking ? 'is-closing' : ''}`}
         >
-          Lives:
+          {defeated ? 'Out of Lives!' : 'Lives:'}
         </span>
         {Array.from({ length: STARTING_LIVES }, (_, index) => {
           const state =
@@ -69,7 +77,9 @@ export const Lives = ({
         smashing={breaking}
         className={
           fullscreen
-            ? '-ml-5 h-56'
+            ? settled
+              ? '-ml-4 h-28'
+              : '-ml-5 h-56'
             : dense
               ? '-ml-1 h-14'
               : compact

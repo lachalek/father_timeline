@@ -267,7 +267,12 @@ describe('daily deck', () => {
     assert.equal(overview?.levels.easy.played, true);
     assert.equal(overview?.levels.easy.score, 8);
     assert.equal(overview?.levels.medium.played, false);
-    assert.equal((await game.overview(null)).loggedIn, false);
+    assert.equal(overview?.boards.easy.top[0]?.username, 'ada');
+    assert.equal(overview?.boards.easy.top[1]?.username, 'bea');
+    const guest = await game.overview(null);
+    assert.equal(guest.loggedIn, false);
+    assert.equal(guest.boards.easy.top[0]?.username, 'ada');
+    assert.equal(guest.boards.medium.top.length, 0);
   });
 
   it('keeps the best score when a later day is worse', async () => {

@@ -23,6 +23,8 @@
   --good-bg: #e4f6eb;
   --miss-bg: #fdeceb;
   --slot: #fffaf3;
+  --played: #d9d6d1;
+  --played-line: #c5c0b8;
   --shadow: 0 12px 30px rgb(70 46 20 / 12%);
   --font-sans: 'Avenir Next', 'Segoe UI', sans-serif;
 }
@@ -46,6 +48,8 @@
     --good-bg: #173326;
     --miss-bg: #3a1d1d;
     --slot: #2a241e;
+    --played: #3a3a38;
+    --played-line: #55524c;
     --shadow: 0 12px 30px rgb(0 0 0 / 35%);
   }
 }

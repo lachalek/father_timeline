@@ -92,7 +92,7 @@ export const TimelineGame = () => {
       ? 'One shared deck for each level. You can play each one once today.'
       : status.phase === 'done'
         ? lives === 0
-          ? 'Father Time smashed the last hourglass.'
+          ? null
           : 'Every event is on its true year.'
         : mobile
           ? null
@@ -109,7 +109,7 @@ export const TimelineGame = () => {
       <header
         className={
           fullscreen
-            ? 'relative z-30 shrink-0 px-8 pt-5 pb-1'
+            ? `relative z-30 shrink-0 px-8 ${status.phase === 'done' ? 'pt-3 pb-0' : 'pt-5 pb-1'}`
             : `relative z-30 flex shrink-0 justify-between ${mobile ? 'items-center gap-2 px-3 py-1' : 'items-start gap-3 px-4 py-3'}`
         }
       >
@@ -136,7 +136,7 @@ export const TimelineGame = () => {
         ) : null}
         <div className={fullscreen ? 'flex flex-col items-center' : 'min-w-0'}>
           <h1
-            className={`logo-title ${fullscreen ? 'pb-6 text-[4.25rem]' : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
+            className={`logo-title ${fullscreen ? `${status.phase === 'done' ? 'pb-1' : 'pb-6'} text-[4.25rem]` : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
           >
             Father <span className="text-[var(--accent)]">Timeline</span>
           </h1>
@@ -171,8 +171,13 @@ export const TimelineGame = () => {
               </button>
             </p>
           ) : null}
-          {fullscreen && guidance ? (
+          {fullscreen && guidance && status.phase !== 'done' ? (
             <div className="h-12" aria-hidden>
+              <br />
+            </div>
+          ) : null}
+          {fullscreen && status.phase === 'done' ? (
+            <div className="h-3" aria-hidden>
               <br />
             </div>
           ) : null}
@@ -182,6 +187,8 @@ export const TimelineGame = () => {
               breaking={feedback !== null && !feedback.hit}
               compact={false}
               fullscreen
+              settled={status.phase === 'done'}
+              defeated={status.phase === 'done' && lives === 0}
             />
           ) : null}
         </div>
@@ -192,10 +199,11 @@ export const TimelineGame = () => {
                 lives={lives}
                 breaking={feedback !== null && !feedback.hit}
                 compact={compact}
-                dense={mobile}
+                dense={mobile || status.phase === 'done'}
+                defeated={status.phase === 'done' && lives === 0}
               />
             ) : null}
-            {mobile ? null : (
+            {mobile || status.phase === 'done' ? null : (
               <>
                 <p className="mt-1 text-[0.65rem] tracking-[0.18em] text-[var(--muted)] uppercase">
                   Score
@@ -329,16 +337,17 @@ export const TimelineGame = () => {
 
       {status.phase === 'done' ? (
         <>
-          <Leaderboards
-            boards={status.boards}
-            bests={status.bests}
-            current={status.difficulty}
+          <LevelLeaderboard
+            board={status.boards[status.difficulty]}
+            label={DIFFICULTY_BANDS[status.difficulty].label}
             date={status.date}
+            layout={layout}
           />
           <Result
             score={status.game.score}
             lives={status.game.lives}
             placed={status.game.placed}
+            compact={compact}
             onChange={status.chooseAgain}
           />
         </>
@@ -364,12 +373,11 @@ export const TimelineGame = () => {
   );
 };
 
-const standingLine = (standing: LevelStanding | undefined): string => {
-  if (!standing) return 'Checking today’s deck…';
-  if (standing.played && standing.score !== null) {
-    return `Today ${formatScore(standing.score)} · see result`;
+const bestLine = (standing: LevelStanding | undefined): string => {
+  if (standing?.best === null || standing?.best === undefined) {
+    return 'Personal Best: —';
   }
-  return 'One play today';
+  return `Personal Best: ${formatScore(standing.best)}`;
 };
 
 const ModePicker = ({
@@ -387,164 +395,213 @@ const ModePicker = ({
   } | null;
   problem: string | null;
   onChoose: (difficulty: Difficulty) => void;
-}) => (
-  <div
-    data-testid="mode-picker"
-    className={`flex min-h-0 flex-1 items-center justify-center ${layout === 'row' ? 'gap-8 px-6' : 'flex-col gap-4 px-4 py-3'}`}
-  >
-    <FatherTime className={compact ? 'h-32' : 'h-56'} />
+}) => {
+  const wide = layout === 'row';
+  return (
     <div
-      className={`flex min-w-0 flex-col items-center gap-3 ${layout === 'row' ? 'w-full max-w-3xl' : 'w-full max-w-sm'}`}
+      data-testid="mode-picker"
+      className={`flex min-h-0 flex-1 flex-col items-center justify-center ${wide ? 'gap-6 px-8 py-2' : 'gap-4 px-4 py-3'}`}
     >
-      {overview && !overview.loggedIn ? (
-        <p
-          data-testid="login-required"
-          className="max-w-xs text-center text-sm text-[var(--ink)]"
-        >
-          {DAILY_LOGIN_MESSAGE}
-        </p>
-      ) : (
-        <div
-          className={
-            layout === 'row'
-              ? 'grid w-full grid-cols-3 gap-3'
-              : 'flex w-full flex-col gap-3'
-          }
-        >
-          {DIFFICULTIES.map((id) => {
-            const band = DIFFICULTY_BANDS[id];
-            const standing = overview?.levels[id];
-            return (
-              <button
-                key={id}
-                type="button"
-                data-testid={`mode-${id}`}
-                data-played={standing?.played ? 'true' : 'false'}
-                className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-[var(--card-line)] bg-[var(--card)] text-left text-[var(--ink)] shadow-[var(--shadow)] ${compact ? 'px-3 py-3' : 'px-4 py-4'}`}
-                onClick={() => onChoose(id)}
-              >
-                <span className="min-w-0">
-                  <span
-                    className={`block font-display leading-none ${compact ? 'text-xl' : 'text-2xl'}`}
-                  >
-                    {band.label}
-                  </span>
-                  <span className="mt-1 block text-sm text-[var(--muted)]">
-                    {band.detail}
-                  </span>
-                </span>
-                <span className="shrink-0 text-right">
-                  <span className="block text-xs text-[var(--ink)]">
-                    {standingLine(standing)}
-                  </span>
-                  <span className="mt-1 block text-xs text-[var(--muted)]">
-                    {standing?.best !== null && standing?.best !== undefined
-                      ? `Best ${formatScore(standing.best)}`
-                      : 'No best yet'}
-                  </span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-      {problem ? (
-        <p className="max-w-xs text-center text-sm text-[var(--miss)]">
-          {problem}
-        </p>
-      ) : null}
-    </div>
-  </div>
-);
-
-const Leaderboards = ({
-  boards,
-  bests,
-  current,
-  date,
-}: {
-  boards: Record<Difficulty, DailyBoard>;
-  bests: Record<Difficulty, number | null>;
-  current: Difficulty;
-  date: string;
-}) => (
-  <section
-    data-testid="leaderboard"
-    className="shrink-0 overflow-auto border-t border-[var(--card-line)] px-3 py-2"
-  >
-    <p className="text-center text-[0.65rem] tracking-[0.16em] text-[var(--muted)] uppercase">
-      {formatDailyDate(date)} · resets at midnight UTC
-    </p>
-    <div className="mt-2 grid grid-cols-3 gap-2">
-      {DIFFICULTIES.map((id) => {
-        const board = boards[id];
-        const listed = board.top.some((entry) => entry.you);
-        return (
+      <FatherTime
+        className={
+          wide ? (compact ? 'h-28' : 'h-44') : compact ? 'h-32' : 'h-56'
+        }
+      />
+      <div
+        className={`flex w-full min-w-0 flex-col items-center gap-3 ${wide ? 'max-w-5xl' : 'max-w-sm'}`}
+      >
+        {overview && !overview.loggedIn ? (
+          <p
+            data-testid="login-required"
+            className="max-w-xs text-center text-sm text-[var(--ink)]"
+          >
+            {DAILY_LOGIN_MESSAGE}
+          </p>
+        ) : (
           <div
-            key={id}
-            data-testid={`leaderboard-${id}`}
             className={
-              id === current
-                ? 'rounded-xl bg-[var(--card)] px-2 py-2'
-                : 'px-2 py-2'
+              wide
+                ? 'grid w-full grid-cols-3 gap-4'
+                : 'flex w-full flex-col gap-3'
             }
           >
-            <p className="text-[0.65rem] tracking-[0.16em] text-[var(--muted)] uppercase">
-              {DIFFICULTY_BANDS[id].label}
-            </p>
-            {board.top.length === 0 ? (
-              <p className="mt-1 text-xs text-[var(--muted)]">No scores yet</p>
-            ) : (
-              <ol className="mt-1 space-y-0.5 text-xs">
-                {board.top.map((entry) => (
-                  <li
-                    key={entry.rank}
-                    data-you={entry.you ? 'true' : 'false'}
-                    className="flex items-baseline gap-1"
-                  >
-                    <span className="w-4 shrink-0 tabular-nums text-[var(--muted)]">
-                      {entry.rank}
+            {DIFFICULTIES.map((id) => {
+              const band = DIFFICULTY_BANDS[id];
+              const standing = overview?.levels[id];
+              const played = standing?.played === true;
+              const dailyScore =
+                played &&
+                standing?.score !== null &&
+                standing?.score !== undefined
+                  ? standing.score
+                  : null;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  data-testid={`mode-${id}`}
+                  data-played={played ? 'true' : 'false'}
+                  className={`flex min-w-0 cursor-pointer items-center justify-between gap-3 rounded-2xl border text-left shadow-[var(--shadow)] ${compact ? 'px-3 py-3' : 'px-4 py-4'} ${
+                    played
+                      ? 'border-[var(--played-line)] bg-[var(--played)] text-[var(--ink)]'
+                      : 'border-[var(--card-line)] bg-[var(--card)] text-[var(--ink)]'
+                  }`}
+                  onClick={() => onChoose(id)}
+                >
+                  <span className="min-w-0">
+                    <span
+                      className={`block font-display leading-none ${wide || compact ? 'text-xl' : 'text-2xl'}`}
+                    >
+                      {band.label}
                     </span>
                     <span
-                      className={`min-w-0 flex-1 truncate ${entry.you ? 'font-semibold' : ''}`}
+                      className={`mt-1 block text-[var(--ink)] ${wide ? 'text-xs' : 'text-sm'}`}
                     >
-                      {entry.you ? 'You' : entry.username}
+                      {bestLine(standing)}
                     </span>
-                    <span className="tabular-nums">
-                      {formatScore(entry.score)}
+                  </span>
+                  {dailyScore !== null ? (
+                    <span className="shrink-0 text-right">
+                      <span className="block text-[0.65rem] tracking-[0.12em] text-[var(--ink)] uppercase">
+                        Daily Score
+                      </span>
+                      <span
+                        className={`mt-1 block font-display leading-none text-[var(--good)] ${wide || compact ? 'text-2xl' : 'text-3xl'}`}
+                      >
+                        {formatScore(dailyScore)}
+                      </span>
                     </span>
-                  </li>
-                ))}
-              </ol>
-            )}
-            {board.you && !listed ? (
-              <p data-testid="your-rank" className="mt-1 text-xs font-semibold">
-                You · {ordinal(board.you.rank)} · {formatScore(board.you.score)}
-              </p>
-            ) : null}
+                  ) : null}
+                </button>
+              );
+            })}
           </div>
-        );
-      })}
+        )}
+        {problem ? (
+          <p className="max-w-xs text-center text-sm text-[var(--miss)]">
+            {problem}
+          </p>
+        ) : null}
+      </div>
     </div>
-    <p className="mt-2 text-center text-xs text-[var(--muted)]">
-      Your best ·{' '}
-      {DIFFICULTIES.map(
-        (id) =>
-          `${DIFFICULTY_BANDS[id].label} ${bests[id] === null ? '—' : formatScore(bests[id])}`
-      ).join(' · ')}
-    </p>
-  </section>
-);
+  );
+};
+
+const BOARD_SLOTS = [0, 1, 2, 3, 4];
+
+const LeaderboardSlot = ({
+  board,
+  slot,
+  roomy,
+}: {
+  board: DailyBoard;
+  slot: number;
+  roomy: boolean;
+}) => {
+  const entry = board.top[slot] ?? null;
+  return (
+    <li
+      data-filled={entry ? 'true' : 'false'}
+      data-you={entry?.you ? 'true' : 'false'}
+      className={`flex min-w-0 items-baseline ${
+        roomy
+          ? `gap-2 rounded-lg px-2 py-1 text-sm ${entry?.you ? 'bg-[var(--good-bg)] font-semibold' : ''}`
+          : `h-4 gap-1 text-xs ${entry?.you ? 'font-semibold' : ''}`
+      }`}
+    >
+      <span
+        className={`shrink-0 text-center tabular-nums ${roomy ? 'w-4 font-display' : 'w-3'} ${
+          entry && slot === 0 ? 'text-[var(--accent)]' : 'text-[var(--muted)]'
+        }`}
+      >
+        {slot + 1}
+      </span>
+      <span className="min-w-0 flex-1 truncate">{entry?.username ?? ''}</span>
+      <span
+        className={`shrink-0 text-[var(--good)] tabular-nums ${roomy ? 'font-display text-lg leading-none' : ''}`}
+      >
+        {entry ? formatScore(entry.score) : ''}
+      </span>
+    </li>
+  );
+};
+
+const LevelLeaderboard = ({
+  board,
+  label,
+  date,
+  layout,
+}: {
+  board: DailyBoard;
+  label: string;
+  date: string;
+  layout: 'row' | 'column';
+}) => {
+  const listed = board.top.some((entry) => entry.you);
+  const rankLine =
+    board.you && !listed ? (
+      <p
+        data-testid="your-rank"
+        className="mt-1 text-center text-xs font-semibold"
+      >
+        {board.you.username} · {ordinal(board.you.rank)} ·{' '}
+        {formatScore(board.you.score)}
+      </p>
+    ) : null;
+  if (layout === 'row') {
+    return (
+      <section data-testid="leaderboard" className="shrink-0 px-4 pt-1 pb-2">
+        <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-[var(--card-line)] bg-[var(--card)] shadow-[var(--shadow)]">
+          <div className="border-b border-[var(--card-line)] px-4 py-2 text-center">
+            <p className="font-display text-xl leading-none">
+              Daily Leaderboard
+            </p>
+            <p className="mt-1 text-[0.65rem] tracking-[0.14em] text-[var(--muted)] uppercase">
+              {label} · {formatDailyDate(date)}
+            </p>
+          </div>
+          <ol className="space-y-0.5 px-2 py-1.5">
+            {BOARD_SLOTS.map((slot) => (
+              <LeaderboardSlot key={slot} board={board} slot={slot} roomy />
+            ))}
+          </ol>
+          {rankLine ? <div className="px-3 pb-2">{rankLine}</div> : null}
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section
+      data-testid="leaderboard"
+      className="shrink-0 border-t border-[var(--card-line)] bg-[var(--card)] px-3 py-1.5"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-display text-base leading-none">Daily Leaderboard</p>
+        <p className="text-[0.6rem] tracking-[0.14em] text-[var(--muted)] uppercase">
+          {label} · {formatDailyDate(date)}
+        </p>
+      </div>
+      <ol className="mt-1">
+        {BOARD_SLOTS.map((slot) => (
+          <LeaderboardSlot key={slot} board={board} slot={slot} roomy={false} />
+        ))}
+      </ol>
+      {rankLine}
+    </section>
+  );
+};
 
 const Result = ({
   score,
   lives,
   placed,
+  compact,
   onChange,
 }: {
   score: number;
   lives: number;
   placed: PlacedCard[];
+  compact: boolean;
   onChange: () => void;
 }) => {
   const { right, wrong } = tally(placed);
@@ -556,7 +613,7 @@ const Result = ({
         : 'text-[var(--ink)]';
   return (
     <footer
-      className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--card-line)] px-4 py-3"
+      className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--card-line)] px-4 py-2"
       data-testid="result"
     >
       <div>
@@ -564,12 +621,11 @@ const Result = ({
           Final score
         </p>
         <p
-          className={`font-display text-4xl leading-none tabular-nums ${color}`}
+          className={`font-display leading-none tabular-nums ${compact ? 'text-3xl' : 'text-4xl'} ${color}`}
         >
           {formatScore(score)}
         </p>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          {lives === 0 ? 'Out of hourglasses · ' : ''}
           {right} right · {wrong} wrong
         </p>
       </div>

@@ -410,16 +410,24 @@ export const createDaily = (deps: DailyDeps): DailyGame => {
       medium: { played: false, score: null, best: null },
       hard: { played: false, score: null, best: null },
     };
-    if (!player) return { type: 'daily', date, loggedIn: false, levels };
-    for (const difficulty of DIFFICULTIES) {
-      const result = await readResult(date, difficulty, player.id);
-      levels[difficulty] = {
-        played: result !== null,
-        score: result ? result.score : null,
-        best: await readBest(player.id, difficulty),
-      };
+    const boards = await readBoards(date, player?.id ?? null);
+    if (player) {
+      for (const difficulty of DIFFICULTIES) {
+        const result = await readResult(date, difficulty, player.id);
+        levels[difficulty] = {
+          played: result !== null,
+          score: result ? result.score : null,
+          best: await readBest(player.id, difficulty),
+        };
+      }
     }
-    return { type: 'daily', date, loggedIn: true, levels };
+    return {
+      type: 'daily',
+      date,
+      loggedIn: player !== null,
+      levels,
+      boards,
+    };
   };
 
   const start = async (
