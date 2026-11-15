@@ -5,7 +5,8 @@
     "http": {
       "enable": true,
       "domains": ["en.wikipedia.org"]
-    }
+    },
+    "journeys": true
   },
   "post": {
     "dir": "dist/client",
@@ -26,8 +27,8 @@
   "menu": {
     "items": [
       {
-        "label": "Create a new post",
-        "description": "Father Timeline: place historical events from Wikipedia",
+        "label": "Post today's challenge",
+        "description": "Share today's Father Timeline decks",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
@@ -46,6 +47,14 @@
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install"
+  },
+  "scheduler": {
+    "tasks": {
+      "daily-challenge": {
+        "endpoint": "/internal/scheduler/daily",
+        "cron": "5 0 * * *"
+      }
+    }
   },
   "scripts": {
     "dev": "vite build --watch",

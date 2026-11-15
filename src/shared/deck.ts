@@ -40,7 +40,7 @@ export const pickDays = (
   const picked: Day[] = [];
   const seen = new Set<string>();
   let guard = 0;
-  while (picked.length < count && guard < 80) {
+  while (picked.length < count && guard < 800) {
     guard += 1;
     const monthIndex = Math.floor(random() * DAYS_IN_MONTH.length);
     const days = DAYS_IN_MONTH[monthIndex] ?? 28;
@@ -220,14 +220,15 @@ const matchedEvents = (
 const sampleArticles = (
   events: readonly TimelineEvent[],
   views: ReadonlyMap<string, number | null>,
-  excludeYears: ReadonlySet<number>
+  excludeYears: ReadonlySet<number>,
+  sample = SAMPLED_PER_DAY
 ): string[] => {
   const candidates = events.filter(
     (event) => event.article.length > 0 && !excludeYears.has(event.year)
   );
   const missing: string[] = [];
   const seen = new Set<string>();
-  for (const event of spread(candidates, SAMPLED_PER_DAY)) {
+  for (const event of spread(candidates, sample)) {
     if (views.has(event.article) || seen.has(event.article)) continue;
     seen.add(event.article);
     missing.push(event.article);
@@ -330,4 +331,98 @@ export const fetchDeck = async (options: {
     throw new Error(`Only found ${deck.length} ${options.difficulty} events`);
   }
   return deck;
+};
+
+export type ScoredEvent = TimelineEvent & {
+  views: number;
+};
+
+const scoreArticles = async (
+  fetchImpl: typeof fetch,
+  cache: DeckCache | undefined,
+  views: Map<string, number | null>,
+  articles: readonly string[]
+): Promise<void> => {
+  const missing: string[] = [];
+  for (const article of articles) {
+    if (views.has(article)) continue;
+    const cached = await readViews(cache, article);
+    if (cached === undefined) {
+      missing.push(article);
+      continue;
+    }
+    views.set(article, cached);
+  }
+  const chunks: string[][] = [];
+  for (let index = 0; index < missing.length; index += SAMPLED_PER_DAY) {
+    chunks.push(missing.slice(index, index + SAMPLED_PER_DAY));
+  }
+  let cursor = 0;
+  const workers = Array.from(
+    { length: Math.min(4, chunks.length) },
+    async () => {
+      while (cursor < chunks.length) {
+        const chunk = chunks[cursor];
+        cursor += 1;
+        if (!chunk) continue;
+        const scored = await fetchViewBatch(fetchImpl, chunk);
+        for (const article of chunk) {
+          const pace = scored?.get(pageviewKey(article));
+          if (pace === undefined) {
+            views.set(article, null);
+            continue;
+          }
+          views.set(article, pace);
+          await remember(cache, viewsKey(article), String(pace), VIEWS_TTL_MS);
+        }
+      }
+    }
+  );
+  await Promise.all(workers);
+};
+
+/** Pages from several calendar days, with a yearly view count, across every band. */
+export const fetchScoredEvents = async (options: {
+  random?: () => number;
+  cache?: DeckCache;
+  fetch?: typeof fetch;
+  days?: number;
+  avoidDays?: ReadonlySet<string>;
+}): Promise<{ events: ScoredEvent[]; days: string[] }> => {
+  const random = options.random ?? Math.random;
+  const fetchImpl = options.fetch ?? fetch;
+  const dayCount = options.days ?? 4;
+  const chosen = pickDays(dayCount, random, options.avoidDays);
+  const groups = await Promise.all(
+    chosen.flatMap((day) =>
+      (['events', 'births'] as const).map((type) =>
+        loadDay(fetchImpl, options.cache, type, day)
+      )
+    )
+  );
+  const loaded = groups.flat();
+  const views = new Map<string, number | null>();
+  const articles: string[] = [];
+  const seenArticles = new Set<string>();
+  for (const events of groups) {
+    for (const article of sampleArticles(events, views, new Set())) {
+      if (seenArticles.has(article)) continue;
+      seenArticles.add(article);
+      articles.push(article);
+    }
+  }
+  await scoreArticles(fetchImpl, options.cache, views, articles);
+  const events: ScoredEvent[] = [];
+  const seen = new Set<string>();
+  for (const event of loaded) {
+    if (seen.has(event.id) || event.article.length === 0) continue;
+    const count = views.get(event.article);
+    if (count === undefined || count === null || count < 10_000) continue;
+    seen.add(event.id);
+    events.push({ ...event, views: count });
+  }
+  return {
+    events,
+    days: chosen.map((day) => `${day.month}-${day.day}`),
+  };
 };

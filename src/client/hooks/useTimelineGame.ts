@@ -1,206 +1,306 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Difficulty } from '../../shared/difficulty';
 import {
-  addUpcoming,
-  applyPlacement,
-  DECK_SIZE,
-  parseDeckResponse,
-  resolveFeedback,
-  startGame,
-  type DoneState,
-  type PlayingState,
-  type TimelineEvent,
-  type WaitingState,
-} from '../../shared/timeline';
+  doneStateFromDaily,
+  parseDailyDone,
+  parseDailyFailure,
+  parseDailyOverview,
+  parseDailyPlaced,
+  parseDailyPlaying,
+  placementProgress,
+  playingStateFromDaily,
+  type DailyBoard,
+  type DailyDoneResponse,
+  type DailyOverview,
+  type DailyPlayingResponse,
+} from '../../shared/daily';
+import type { DoneState, PlayingState } from '../../shared/timeline';
+import {
+  abandonRun,
+  beginRun,
+  finishRun,
+  noteProgress,
+} from '../timeline/journey';
 
 const HIT_FEEDBACK_MS = 1100;
 /** Covers the scythe swing, impact hold, shatter, and the lives sliding in. */
 const MISS_FEEDBACK_MS = 1900;
 
 type Status =
-  | { phase: 'choose' }
+  | { phase: 'choose'; overview: DailyOverview | null; problem: string | null }
   | { phase: 'loading'; difficulty: Difficulty }
-  | { phase: 'error'; difficulty: Difficulty; empty: boolean }
-  | { phase: 'playing'; difficulty: Difficulty; game: PlayingState }
-  | { phase: 'waiting'; difficulty: Difficulty; game: WaitingState }
-  | { phase: 'done'; difficulty: Difficulty; game: DoneState };
+  | { phase: 'error'; difficulty: Difficulty; message: string }
+  | {
+      phase: 'playing';
+      difficulty: Difficulty;
+      game: PlayingState;
+      steps: number;
+      problem: string | null;
+    }
+  | {
+      phase: 'done';
+      difficulty: Difficulty;
+      game: DoneState;
+      date: string;
+      bests: Record<Difficulty, number | null>;
+      boards: Record<Difficulty, DailyBoard>;
+    };
+
+const readBody = async (response: Response): Promise<unknown> => {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+};
+
+const doneStatus = (next: DailyDoneResponse): Status => ({
+  phase: 'done',
+  difficulty: next.difficulty,
+  game: doneStateFromDaily(next),
+  date: next.date,
+  bests: next.bests,
+  boards: next.boards,
+});
 
 export const useTimelineGame = () => {
-  const [status, setStatus] = useState<Status>({ phase: 'choose' });
+  const [status, setStatus] = useState<Status>({
+    phase: 'choose',
+    overview: null,
+    problem: null,
+  });
+  const [placing, setPlacing] = useState(false);
   const loadId = useRef(0);
-  const difficultyRef = useRef<Difficulty | null>(null);
+  const placingLock = useRef(false);
+  const placementId = useRef(0);
+  const pending = useRef<{
+    token: number;
+    next: DailyPlayingResponse | DailyDoneResponse;
+  } | null>(null);
+  const statusRef = useRef(status);
+  useEffect(() => {
+    statusRef.current = status;
+  });
 
-  const fill = useCallback(
-    async (
-      id: number,
-      difficulty: Difficulty,
-      dealt: readonly TimelineEvent[]
-    ) => {
-      try {
-        const params = new URLSearchParams({
-          difficulty,
-          fill: '1',
-          limit: String(DECK_SIZE),
-          exclude: dealt.map((event) => event.year).join(','),
-        });
-        const response = await fetch(`/api/deck?${params}`);
-        if (!response.ok || id !== loadId.current) return;
-        const more = parseDeckResponse(await response.json(), 1);
-        if (!more || id !== loadId.current) return;
-        setStatus((current) => {
-          if (
-            current.phase !== 'playing' &&
-            current.phase !== 'waiting' &&
-            current.phase !== 'done'
-          ) {
-            return current;
-          }
-          if (current.difficulty !== difficulty) return current;
-          if (more.events.length === 0) {
-            if (current.phase !== 'waiting') return current;
-            return {
-              phase: 'done',
-              difficulty,
-              game: {
-                phase: 'done',
-                placed: current.game.placed,
-                score: current.game.score,
-                lives: current.game.lives,
-              },
+  const refreshOverview = useCallback(async (id: number) => {
+    try {
+      const response = await fetch('/api/daily');
+      const overview = parseDailyOverview(await readBody(response));
+      if (id !== loadId.current) return;
+      setStatus((current) => {
+        if (current.phase !== 'choose') return current;
+        return overview
+          ? { phase: 'choose', overview, problem: null }
+          : {
+              phase: 'choose',
+              overview: null,
+              problem: 'The daily boards didn’t load.',
             };
-          }
-          const game = addUpcoming(current.game, more.events);
-          if (game.phase === 'waiting') {
-            return { phase: 'waiting', difficulty, game };
-          }
-          return game.phase === 'done'
-            ? { phase: 'done', difficulty, game }
-            : { phase: 'playing', difficulty, game };
-        });
-      } catch (error) {
-        console.error('Failed to load more timeline events', error);
-      }
-    },
-    []
-  );
-
-  const load = useCallback(
-    async (id: number, difficulty: Difficulty) => {
-      try {
-        const response = await fetch(`/api/deck?difficulty=${difficulty}`);
-        if (!response.ok) {
-          let detail = `HTTP ${response.status}`;
-          try {
-            const body: unknown = await response.json();
-            if (
-              typeof body === 'object' &&
-              body !== null &&
-              'message' in body &&
-              typeof body.message === 'string'
-            ) {
-              detail = body.message;
-            }
-          } catch {
-            // The status code is enough when the body is not JSON.
-          }
-          throw new Error(detail);
-        }
-        const deck = parseDeckResponse(await response.json());
-        if (id !== loadId.current) return;
-        const game = deck ? startGame(deck.events) : null;
-        if (!deck || !game || game.phase !== 'playing') {
-          throw new Error('Deck was too short to play');
-        }
-        setStatus({ phase: 'playing', difficulty, game });
-        if (deck.events.length < DECK_SIZE) {
-          void fill(id, difficulty, deck.events);
-        }
-      } catch (error) {
-        if (id !== loadId.current) return;
-        console.error('Failed to load timeline', error);
-        const empty =
-          error instanceof Error && error.message.includes('Only found');
-        setStatus({ phase: 'error', difficulty, empty });
-      }
-    },
-    [fill]
-  );
-
-  const start = useCallback(
-    (difficulty: Difficulty) => {
-      difficultyRef.current = difficulty;
-      const id = ++loadId.current;
-      setStatus({ phase: 'loading', difficulty });
-      void load(id, difficulty);
-    },
-    [load]
-  );
-
-  const reload = useCallback(() => {
-    const difficulty = difficultyRef.current;
-    if (!difficulty) {
-      setStatus({ phase: 'choose' });
-      return;
+      });
+    } catch (error) {
+      console.error('Failed to load the daily boards', error);
+      if (id !== loadId.current) return;
+      setStatus((current) => {
+        if (current.phase !== 'choose') return current;
+        return {
+          phase: 'choose',
+          overview: null,
+          problem: 'The daily boards didn’t load.',
+        };
+      });
     }
-    start(difficulty);
-  }, [start]);
-
-  const chooseAgain = useCallback(() => {
-    difficultyRef.current = null;
-    loadId.current += 1;
-    setStatus({ phase: 'choose' });
   }, []);
-
-  const place = useCallback((slot: number) => {
-    setStatus((current) => {
-      if (current.phase !== 'playing') return current;
-      const game = applyPlacement(current.game, slot);
-      if (game === current.game) return current;
-      return { phase: 'playing', difficulty: current.difficulty, game };
-    });
-  }, []);
-
-  const feedback = status.phase === 'playing' ? status.game.feedback : null;
-  const moreKey =
-    status.phase === 'waiting'
-      ? `wait:${status.game.placed.map((card) => card.event.year).join(',')}`
-      : status.phase === 'playing' &&
-          status.game.queue.length === 0 &&
-          status.game.feedback === null
-        ? `hand:${[...status.game.placed.map((card) => card.event.year), status.game.upcoming.year].join(',')}`
-        : '';
 
   useEffect(() => {
+    void refreshOverview(loadId.current);
+  }, [refreshOverview]);
+
+  const start = useCallback((difficulty: Difficulty) => {
+    const id = ++loadId.current;
+    pending.current = null;
+    setStatus({ phase: 'loading', difficulty });
+    void (async () => {
+      try {
+        const response = await fetch('/api/daily/start', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ difficulty }),
+        });
+        const body = await readBody(response);
+        if (id !== loadId.current) return;
+        const failure = parseDailyFailure(body);
+        if (!response.ok || failure) {
+          setStatus({
+            phase: 'error',
+            difficulty,
+            message: failure?.message ?? 'Today’s deck didn’t load.',
+          });
+          return;
+        }
+        const done = parseDailyDone(body);
+        if (done) {
+          setStatus(doneStatus(done));
+          return;
+        }
+        const playing = parseDailyPlaying(body);
+        if (!playing) {
+          setStatus({
+            phase: 'error',
+            difficulty,
+            message: 'Today’s deck didn’t load.',
+          });
+          return;
+        }
+        beginRun();
+        setStatus({
+          phase: 'playing',
+          difficulty,
+          game: playingStateFromDaily(playing),
+          steps: playing.steps,
+          problem: null,
+        });
+      } catch (error) {
+        console.error('Failed to deal today’s deck', error);
+        if (id !== loadId.current) return;
+        setStatus({
+          phase: 'error',
+          difficulty,
+          message: 'Today’s deck didn’t load.',
+        });
+      }
+    })();
+  }, []);
+
+  const reload = useCallback(() => {
+    const current = statusRef.current;
+    if (current.phase === 'choose') {
+      void refreshOverview(++loadId.current);
+      return;
+    }
+    if (current.phase === 'loading') return;
+    start(current.difficulty);
+  }, [refreshOverview, start]);
+
+  const chooseAgain = useCallback(() => {
+    const id = ++loadId.current;
+    pending.current = null;
+    abandonRun();
+    setStatus({ phase: 'choose', overview: null, problem: null });
+    void refreshOverview(id);
+  }, [refreshOverview]);
+
+  const place = useCallback((slot: number) => {
+    const current = statusRef.current;
     if (
-      (status.phase !== 'playing' && status.phase !== 'waiting') ||
-      moreKey === ''
+      current.phase !== 'playing' ||
+      current.game.feedback ||
+      placingLock.current
     ) {
       return;
     }
-    const events =
-      status.phase === 'playing'
-        ? [
-            ...status.game.placed.map((card) => card.event),
-            status.game.upcoming,
-          ]
-        : status.game.placed.map((card) => card.event);
-    void fill(loadId.current, status.difficulty, events);
-  }, [moreKey, fill, status]);
+    placingLock.current = true;
+    setPlacing(true);
+    const id = loadId.current;
+    const difficulty = current.difficulty;
+    void (async () => {
+      try {
+        const response = await fetch('/api/daily/place', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ difficulty, slot }),
+        });
+        const body = await readBody(response);
+        if (id !== loadId.current) return;
+        const failure = parseDailyFailure(body);
+        if (!response.ok || failure) {
+          setStatus((latest) =>
+            latest.phase === 'playing'
+              ? {
+                  ...latest,
+                  problem:
+                    failure?.message ??
+                    'That placement didn’t save. Try the gap again.',
+                }
+              : latest
+          );
+          return;
+        }
+        const done = parseDailyDone(body);
+        if (done) {
+          setStatus(doneStatus(done));
+          return;
+        }
+        const placed = parseDailyPlaced(body);
+        if (!placed) {
+          setStatus((latest) =>
+            latest.phase === 'playing'
+              ? {
+                  ...latest,
+                  problem: 'That placement didn’t save. Try the gap again.',
+                }
+              : latest
+          );
+          return;
+        }
+        const token = ++placementId.current;
+        pending.current = { token, next: placed.next };
+        setStatus((latest) => {
+          if (latest.phase !== 'playing') return latest;
+          return {
+            ...latest,
+            problem: null,
+            game: { ...latest.game, feedback: placed.feedback },
+          };
+        });
+      } catch (error) {
+        console.error('Failed to save a placement', error);
+        if (id !== loadId.current) return;
+        setStatus((latest) =>
+          latest.phase === 'playing'
+            ? {
+                ...latest,
+                problem: 'That placement didn’t save. Try the gap again.',
+              }
+            : latest
+        );
+      } finally {
+        placingLock.current = false;
+        setPlacing(false);
+      }
+    })();
+  }, []);
+
+  const feedback = status.phase === 'playing' ? status.game.feedback : null;
 
   useEffect(() => {
     if (!feedback) return undefined;
+    const token = placementId.current;
     const timer = window.setTimeout(
       () => {
-        setStatus((current) => {
-          if (current.phase !== 'playing' || !current.game.feedback)
-            return current;
-          const game = resolveFeedback(current.game);
-          if (game.phase === 'waiting') {
-            return { phase: 'waiting', difficulty: current.difficulty, game };
-          }
-          return game.phase === 'done'
-            ? { phase: 'done', difficulty: current.difficulty, game }
-            : { phase: 'playing', difficulty: current.difficulty, game };
+        const move = pending.current;
+        if (!move || move.token !== token) return;
+        pending.current = null;
+        const next = move.next;
+        if (next.type === 'done') {
+          finishRun(
+            placementProgress(next.placed.length, next.steps),
+            next.difficulty,
+            next.lives > 0,
+            next.score
+          );
+          setStatus(doneStatus(next));
+          return;
+        }
+        noteProgress(
+          placementProgress(next.placed.length, next.steps),
+          next.difficulty
+        );
+        setStatus({
+          phase: 'playing',
+          difficulty: next.difficulty,
+          game: playingStateFromDaily(next),
+          steps: next.steps,
+          problem: null,
         });
       },
       feedback.hit ? HIT_FEEDBACK_MS : MISS_FEEDBACK_MS
@@ -208,5 +308,5 @@ export const useTimelineGame = () => {
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
-  return { ...status, place, start, reload, chooseAgain };
+  return { ...status, placing, place, start, reload, chooseAgain };
 };

@@ -1,81 +1,98 @@
 import { Hono } from 'hono';
-import { redis } from '@devvit/web/server';
-import { fetchDeck, type DeckCache } from '../../shared/deck';
-import { isDifficulty } from '../../shared/difficulty';
-import { DECK_SIZE, type DeckResponse } from '../../shared/timeline';
+import { context } from '@devvit/web/server';
+import { isDifficulty } from '../../shared/difficulty.ts';
+import {
+  DAILY_LOGIN_MESSAGE,
+  displayName,
+  type DailyFailure,
+} from '../../shared/daily.ts';
+import { liveDaily } from '../core/liveDaily.ts';
+import type { Player } from '../core/daily.ts';
 
-type ErrorResponse = {
-  status: 'error';
-  message: string;
-};
+const game = liveDaily();
 
-const cache: DeckCache = {
-  get: (key) => redis.get(key),
-  set: async (key, value, ttlMs) => {
-    await redis.set(key, value, {
-      expiration: new Date(Date.now() + ttlMs),
-    });
-  },
-};
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const excludeYears = (raw: string | undefined): Set<number> => {
-  const years = new Set<number>();
-  if (!raw) return years;
-  for (const part of raw.split(',').slice(0, 40)) {
-    if (!/^-?\d+$/.test(part)) continue;
-    years.add(Number(part));
+const readBody = async (request: Request): Promise<unknown> => {
+  try {
+    return await request.json();
+  } catch {
+    return null;
   }
-  return years;
 };
 
-const requestedTarget = (raw: string | undefined): number => {
-  if (!raw || !/^\d+$/.test(raw)) return DECK_SIZE;
-  const target = Number(raw);
-  if (target < 1) return 1;
-  if (target > DECK_SIZE) return DECK_SIZE;
-  return target;
+const currentPlayer = (): Player | null => {
+  const id = context.userId;
+  if (!id) return null;
+  return { id, username: displayName(context.username) };
+};
+
+const fail = (failure: DailyFailure): Response => {
+  const status =
+    failure.code === 'busy'
+      ? 409
+      : failure.code === 'deck'
+        ? 502
+        : failure.code === 'login'
+          ? 401
+          : 400;
+  return Response.json(failure, { status });
 };
 
 export const api = new Hono();
 
-api.get('/deck', async (c) => {
-  const difficulty = c.req.query('difficulty');
-  if (!isDifficulty(difficulty)) {
-    return c.json<ErrorResponse>(
-      { status: 'error', message: 'Choose easy, medium, or hard' },
-      400
-    );
-  }
-  const fill = c.req.query('fill') === '1';
-  try {
-    const events = await fetchDeck({
-      cache,
-      difficulty,
-      // Two cards are enough to put the first event on the line. The client asks for the rest.
-      minimum: fill ? 1 : 2,
-      maxDays: 2,
-      stopEarly: !fill,
-      target: fill ? requestedTarget(c.req.query('limit')) : DECK_SIZE,
-      excludeYears: excludeYears(c.req.query('exclude')),
+api.get('/daily', async (c) => {
+  return c.json(await game.overview(currentPlayer()));
+});
+
+api.post('/daily/start', async (c) => {
+  const player = currentPlayer();
+  if (!player) {
+    return fail({
+      type: 'error',
+      code: 'login',
+      message: DAILY_LOGIN_MESSAGE,
     });
-    return c.json<DeckResponse>({
-      type: 'deck',
-      source: 'wikipedia',
-      events,
-    });
-  } catch (error) {
-    if (fill) {
-      return c.json<DeckResponse>({
-        type: 'deck',
-        source: 'wikipedia',
-        events: [],
-      });
-    }
-    console.error('API Deck Error:', error);
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Could not load Wikipedia events';
-    return c.json<ErrorResponse>({ status: 'error', message }, 502);
   }
+  const body = await readBody(c.req.raw);
+  if (!isRecord(body) || !isDifficulty(body.difficulty)) {
+    return fail({
+      type: 'error',
+      code: 'slot',
+      message: 'Choose easy, medium, or hard.',
+    });
+  }
+  const result = await game.start(player, body.difficulty);
+  if (result.type === 'error') return fail(result);
+  return c.json(result);
+});
+
+api.post('/daily/place', async (c) => {
+  const player = currentPlayer();
+  if (!player) {
+    return fail({
+      type: 'error',
+      code: 'login',
+      message: DAILY_LOGIN_MESSAGE,
+    });
+  }
+  const body = await readBody(c.req.raw);
+  if (!isRecord(body) || !isDifficulty(body.difficulty)) {
+    return fail({
+      type: 'error',
+      code: 'slot',
+      message: 'Choose easy, medium, or hard.',
+    });
+  }
+  if (typeof body.slot !== 'number' || !Number.isInteger(body.slot)) {
+    return fail({
+      type: 'error',
+      code: 'slot',
+      message: 'That spot isn’t open.',
+    });
+  }
+  const result = await game.place(player, body.difficulty, body.slot);
+  if (result.type === 'error') return fail(result);
+  return c.json(result);
 });
