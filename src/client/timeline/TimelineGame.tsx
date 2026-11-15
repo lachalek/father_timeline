@@ -135,7 +135,7 @@ export const TimelineGame = () => {
           <h1
             className={`logo-title ${fullscreen ? 'pb-6 text-[4.25rem]' : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
           >
-            Father Timeline
+            Father <span className="text-[var(--accent)]">Timeline</span>
           </h1>
           {mobile && score !== null ? (
             <p className="mt-1 flex items-baseline gap-1.5 leading-none">
@@ -157,7 +157,7 @@ export const TimelineGame = () => {
               {guidance}{' '}
               <button
                 type="button"
-                className="cursor-pointer underline"
+                className="cursor-pointer font-semibold text-[var(--ink)] underline"
                 onClick={() =>
                   navigateTo(
                     'https://en.wikipedia.org/wiki/Wikipedia:On_this_day'
@@ -382,7 +382,7 @@ const ModePicker = ({
             key={id}
             type="button"
             data-testid={`mode-${id}`}
-            className={`cursor-pointer rounded-2xl border border-[var(--card-line)] bg-[var(--card)] text-left shadow-[var(--shadow)] ${compact ? 'px-3 py-3' : 'px-4 py-4'}`}
+            className={`cursor-pointer rounded-2xl border border-[var(--card-line)] bg-[var(--card)] text-left text-[var(--ink)] shadow-[var(--shadow)] ${compact ? 'px-3 py-3' : 'px-4 py-4'}`}
             onClick={() => onChoose(id)}
           >
             <span

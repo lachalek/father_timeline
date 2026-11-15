@@ -11,14 +11,14 @@ const WIKIPEDIA_DONATE =
 export const Splash = () => {
   return (
     <div className="game-shell flex h-full min-h-0 items-center justify-center px-4 py-3">
-      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-4 gap-y-2">
-        <FatherTime className="h-32" />
-        <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="logo-title text-[2.75rem]">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-6 gap-y-3">
+        <FatherTime className="h-40" />
+        <div className="flex flex-col items-center gap-3 text-center">
+          <h1 className="logo-title text-[3.5rem]">
             Father
             <span className="block text-[var(--accent)]">Timeline</span>
           </h1>
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-base text-[var(--muted)]">
             Powered by{' '}
             <button
               type="button"
@@ -30,7 +30,7 @@ export const Splash = () => {
           </p>
           <button
             type="button"
-            className="btn"
+            className="btn btn-lg"
             onClick={(event) => requestExpandedMode(event.nativeEvent, 'game')}
           >
             Play

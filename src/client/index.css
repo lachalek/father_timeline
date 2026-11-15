@@ -97,6 +97,11 @@ body,
   opacity: 0.55;
 }
 
+.btn-lg {
+  padding: 0.85rem 1.5rem;
+  font-size: 1.125rem;
+}
+
 .btn-quiet {
   background: transparent;
   color: var(--ink);
