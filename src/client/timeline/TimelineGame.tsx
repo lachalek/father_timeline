@@ -136,7 +136,7 @@ export const TimelineGame = () => {
         ) : null}
         <div className={fullscreen ? 'flex flex-col items-center' : 'min-w-0'}>
           <h1
-            className={`logo-title ${fullscreen ? `${status.phase === 'done' ? 'pb-1' : 'pb-6'} text-[4.25rem]` : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
+            className={`logo-title ${fullscreen ? `${status.phase === 'done' ? 'pb-1' : 'pb-2'} text-[4.25rem]` : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
           >
             Father <span className="text-[var(--accent)]">Timeline</span>
           </h1>
@@ -170,16 +170,6 @@ export const TimelineGame = () => {
                 Wikipedia
               </button>
             </p>
-          ) : null}
-          {fullscreen && guidance && status.phase !== 'done' ? (
-            <div className="h-12" aria-hidden>
-              <br />
-            </div>
-          ) : null}
-          {fullscreen && status.phase === 'done' ? (
-            <div className="h-3" aria-hidden>
-              <br />
-            </div>
           ) : null}
           {fullscreen && lives !== null ? (
             <Lives
