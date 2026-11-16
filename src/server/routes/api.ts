@@ -8,6 +8,7 @@ import {
 } from '../../shared/daily.ts';
 import { liveDaily } from '../core/liveDaily.ts';
 import type { Player } from '../core/daily.ts';
+import { dailyDateForPost } from '../core/post.ts';
 
 const game = liveDaily();
 
@@ -28,6 +29,9 @@ const currentPlayer = (): Player | null => {
   return { id, username: displayName(context.username) };
 };
 
+const currentDate = (): Promise<string> =>
+  dailyDateForPost(context.postId, context.postData, new Date());
+
 const fail = (failure: DailyFailure): Response => {
   const status =
     failure.code === 'busy'
@@ -43,7 +47,7 @@ const fail = (failure: DailyFailure): Response => {
 export const api = new Hono();
 
 api.get('/daily', async (c) => {
-  return c.json(await game.overview(currentPlayer()));
+  return c.json(await game.overview(currentPlayer(), await currentDate()));
 });
 
 api.post('/daily/start', async (c) => {
@@ -63,7 +67,7 @@ api.post('/daily/start', async (c) => {
       message: 'Choose easy, medium, or hard.',
     });
   }
-  const result = await game.start(player, body.difficulty);
+  const result = await game.start(player, body.difficulty, await currentDate());
   if (result.type === 'error') return fail(result);
   return c.json(result);
 });
@@ -92,7 +96,12 @@ api.post('/daily/place', async (c) => {
       message: 'That spot isn’t open.',
     });
   }
-  const result = await game.place(player, body.difficulty, body.slot);
+  const result = await game.place(
+    player,
+    body.difficulty,
+    body.slot,
+    await currentDate()
+  );
   if (result.type === 'error') return fail(result);
   return c.json(result);
 });

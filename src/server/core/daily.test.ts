@@ -292,6 +292,27 @@ describe('daily deck', () => {
     assert.equal(guest.boards.medium.top.length, 0);
   });
 
+  it('keeps an earlier post’s board after the next day starts', async () => {
+    const run = harness();
+    const ada = player('ada');
+    await playOut(run.game, ada, run.events, 0);
+    run.setNow(new Date(Date.UTC(2026, 10, 15, 15)));
+    const today = await run.game.overview(null);
+    assert.equal(today.date, '2026-11-15');
+    assert.equal(today.boards.easy.top.length, 0);
+    const earlier = await run.game.overview(null, '2026-11-14');
+    assert.equal(earlier.date, '2026-11-14');
+    assert.equal(earlier.boards.easy.top[0]?.username, 'ada');
+    const replay = await run.game.start(ada, 'easy', '2026-11-14');
+    assert.equal(replay.type, 'done');
+    await playOut(run.game, ada, run.events, 0);
+    const earlierAgain = await run.game.overview(null, '2026-11-14');
+    assert.equal(earlierAgain.boards.easy.top.length, 1);
+    const next = await run.game.overview(null);
+    assert.equal(next.boards.easy.top.length, 1);
+    assert.equal(next.boards.easy.top[0]?.username, 'ada');
+  });
+
   it('keeps the best score when a later day is worse', async () => {
     const run = harness();
     const ada = player('ada');

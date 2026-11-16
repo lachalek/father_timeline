@@ -433,8 +433,10 @@ export type DailyFailure = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isDateKey = (value: unknown): value is string =>
+export const isDailyDateKey = (value: unknown): value is string =>
   typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const isDateKey = isDailyDateKey;
 
 const isScore = (value: unknown): value is number =>
   typeof value === 'number' &&

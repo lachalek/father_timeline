@@ -4,6 +4,7 @@ import {
   DAILY_RETENTION_MS,
   copyEvent,
   dailyDateKey,
+  isDailyDateKey,
   displayName,
   hideEvent,
   parseEventList,
@@ -28,6 +29,12 @@ import {
 
 export const dailyPostKey = (date: string): string => `daily:v1:post:${date}`;
 
+export const postDateKey = (postId: string): string =>
+  `daily:v1:post-date:${postId}`;
+
+/** Leaderboards stay with the post after the next day’s post goes up. */
+export const BOARD_RETENTION_MS = 45 * 24 * 60 * 60 * 1000;
+
 export const dailyLockKey = (
   date: string,
   difficulty: Difficulty,
@@ -37,7 +44,11 @@ export const dailyLockKey = (
 export const dailyExpiration = (now: Date): Date =>
   new Date(now.getTime() + DAILY_RETENTION_MS);
 
-const retentionSeconds = (): number => Math.floor(DAILY_RETENTION_MS / 1000);
+export const boardExpiration = (now: Date): Date =>
+  new Date(now.getTime() + BOARD_RETENTION_MS);
+
+const boardRetentionSeconds = (): number =>
+  Math.floor(BOARD_RETENTION_MS / 1000);
 
 export const dailyDeckKey = (date: string, difficulty: Difficulty): string =>
   `daily:v1:deck:${date}:${difficulty}`;
@@ -117,15 +128,17 @@ type StoredResult = {
 };
 
 export type DailyGame = {
-  overview: (player: Player | null) => Promise<DailyOverview>;
+  overview: (player: Player | null, date?: string) => Promise<DailyOverview>;
   start: (
     player: Player,
-    difficulty: Difficulty
+    difficulty: Difficulty,
+    date?: string
   ) => Promise<DailyPlayingResponse | DailyDoneResponse | DailyFailure>;
   place: (
     player: Player,
     difficulty: Difficulty,
-    slot: number
+    slot: number,
+    date?: string
   ) => Promise<DailyPlacedResponse | DailyDoneResponse | DailyFailure>;
   ensureDeck: (difficulty: Difficulty) => Promise<readonly TimelineEvent[]>;
 };
@@ -272,6 +285,7 @@ export const createDaily = (deps: DailyDeps): DailyGame => {
   ): Promise<DailyBoard> => {
     const key = boardKey(date, difficulty);
     const rows = await store.zRangeDesc(key, 0, 4);
+    if (rows.length > 0) await store.expire(key, boardRetentionSeconds());
     const top: BoardEntry[] = [];
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
@@ -396,15 +410,23 @@ export const createDaily = (deps: DailyDeps): DailyGame => {
     if ((await store.get(key)) !== body) return;
     await store.set(nameKey(player.id), displayName(player.username));
     await store.zAdd(boardKey(date, difficulty), player.id, result.score);
-    await store.expire(boardKey(date, difficulty), retentionSeconds());
+    await store.expire(boardKey(date, difficulty), boardRetentionSeconds());
     const previous = await readBest(player.id, difficulty);
     if (previous === null || result.score > previous) {
       await store.set(bestKey(player.id, difficulty), String(result.score));
     }
   };
 
-  const overview = async (player: Player | null): Promise<DailyOverview> => {
-    const date = dailyDateKey(deps.now());
+  const gameDate = (requested: string | undefined, now: Date): string =>
+    requested !== undefined && isDailyDateKey(requested)
+      ? requested
+      : dailyDateKey(now);
+
+  const overview = async (
+    player: Player | null,
+    requested?: string
+  ): Promise<DailyOverview> => {
+    const date = gameDate(requested, deps.now());
     const levels: Record<Difficulty, LevelStanding> = {
       easy: { played: false, score: null, best: null },
       medium: { played: false, score: null, best: null },
@@ -432,10 +454,11 @@ export const createDaily = (deps: DailyDeps): DailyGame => {
 
   const start = async (
     player: Player,
-    difficulty: Difficulty
+    difficulty: Difficulty,
+    requested?: string
   ): Promise<DailyPlayingResponse | DailyDoneResponse | DailyFailure> => {
     const now = deps.now();
-    const date = dailyDateKey(now);
+    const date = gameDate(requested, now);
     const finished = await readResult(date, difficulty, player.id);
     if (finished) return doneFrom(date, difficulty, player, finished);
     const existing = await readRun(date, difficulty, player.id);
@@ -494,7 +517,8 @@ export const createDaily = (deps: DailyDeps): DailyGame => {
   const place = async (
     player: Player,
     difficulty: Difficulty,
-    slot: number
+    slot: number,
+    requested?: string
   ): Promise<DailyPlacedResponse | DailyDoneResponse | DailyFailure> => {
     if (!Number.isInteger(slot) || slot < 0) {
       return {
@@ -504,7 +528,7 @@ export const createDaily = (deps: DailyDeps): DailyGame => {
       };
     }
     const now = deps.now();
-    const date = dailyDateKey(now);
+    const date = gameDate(requested, now);
     const finished = await readResult(date, difficulty, player.id);
     if (finished) return doneFrom(date, difficulty, player, finished);
     const token = deps.id();
