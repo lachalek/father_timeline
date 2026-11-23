@@ -388,10 +388,13 @@ describe('daily pool', () => {
   const pooled = (
     year: number,
     views: number,
-    id = `event:${year}`
+    id = `event:${year}`,
+    article = `Year_${year}`
   ): PooledEvent => ({
     ...event(year),
     id,
+    article,
+    title: article,
     views,
   });
 
@@ -479,6 +482,24 @@ describe('daily pool', () => {
     assert.equal(bandCounts(kept).hard, 1);
     assert.equal(poolFilled(bandCounts(kept), 1), false);
     assert.equal(poolFilled({ easy: 600, medium: 600, hard: 600 }), true);
+  });
+
+  it('keeps one card per wikipedia article in a level deck', () => {
+    const war = "Hundred Years' War";
+    const queue = [
+      pooled(1360, 2_000_000, 'war-a', war),
+      pooled(1364, 2_000_000, 'war-b', war),
+      pooled(1428, 2_000_000, 'war-c', war),
+      pooled(1800, 2_000_000, 'other', 'French Revolution'),
+    ];
+    const dealt = dealQueue(queue, randomFor('2026-11-14'), 10);
+    const articles = dealt.decks.easy.map((card) => card.article);
+    assert.equal(new Set(articles).size, articles.length);
+    assert.equal(
+      dealt.decks.easy.filter((card) => card.article === war).length,
+      1
+    );
+    assert.deepEqual(ids(dealt.decks.easy).sort(), ['other', 'war-a']);
   });
 
   it('keeps one card per year and puts new pages at the beginning', () => {

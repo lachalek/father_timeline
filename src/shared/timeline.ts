@@ -189,9 +189,14 @@ export const selectDeck = (
   random: () => number = Math.random
 ): TimelineEvent[] => {
   const byYear = new Map<number, TimelineEvent>();
+  const seenArticles = new Set<string>();
   for (const event of candidates) {
     if (!Number.isInteger(event.year)) continue;
-    if (!byYear.has(event.year)) byYear.set(event.year, event);
+    if (byYear.has(event.year)) continue;
+    const article = event.article;
+    if (article.length > 0 && seenArticles.has(article)) continue;
+    byYear.set(event.year, event);
+    if (article.length > 0) seenArticles.add(article);
   }
   const unique = [...byYear.values()].sort(
     (left, right) => left.year - right.year
@@ -226,16 +231,28 @@ export const addUpcoming = (
   state: PlayingState | WaitingState | DoneState,
   events: readonly TimelineEvent[]
 ): PlayingState | WaitingState | DoneState => {
-  const seen = new Set<number>();
-  for (const card of state.placed) seen.add(card.event.year);
+  const seenYears = new Set<number>();
+  const seenArticles = new Set<string>();
+  for (const card of state.placed) {
+    seenYears.add(card.event.year);
+    if (card.event.article.length > 0) seenArticles.add(card.event.article);
+  }
   if (state.phase === 'playing') {
-    seen.add(state.upcoming.year);
-    for (const event of state.queue) seen.add(event.year);
+    seenYears.add(state.upcoming.year);
+    if (state.upcoming.article.length > 0) {
+      seenArticles.add(state.upcoming.article);
+    }
+    for (const event of state.queue) {
+      seenYears.add(event.year);
+      if (event.article.length > 0) seenArticles.add(event.article);
+    }
   }
   const fresh: TimelineEvent[] = [];
   for (const event of events) {
-    if (seen.has(event.year)) continue;
-    seen.add(event.year);
+    if (seenYears.has(event.year)) continue;
+    if (event.article.length > 0 && seenArticles.has(event.article)) continue;
+    seenYears.add(event.year);
+    if (event.article.length > 0) seenArticles.add(event.article);
     fresh.push(event);
   }
   if (fresh.length === 0 || (state.phase === 'done' && state.lives <= 0)) {

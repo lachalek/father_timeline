@@ -93,6 +93,27 @@ describe('timeline placement', () => {
     assert.equal(deck[0]?.title, 'First');
   });
 
+  it('keeps one event per wikipedia article', () => {
+    const war = 'Hundred Years\' War';
+    const deck = selectDeck(
+      [
+        event(1360, war),
+        event(1364, war),
+        event(1428, war),
+        event(1800, 'Other topic'),
+      ],
+      9,
+      () => 0
+    );
+    const articles = deck.map((card) => card.article);
+    assert.equal(new Set(articles).size, articles.length);
+    assert.equal(
+      deck.filter((card) => card.article === war).length,
+      1
+    );
+    assert.equal(deck.length, 2);
+  });
+
   it('spreads a large pool across the whole range', () => {
     const pool = Array.from({ length: 21 }, (_, index) =>
       event(1000 + index * 10, `Era ${index}`)

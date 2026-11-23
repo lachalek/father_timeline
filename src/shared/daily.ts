@@ -259,11 +259,13 @@ const takeFromFront = (
   queue: readonly PooledEvent[],
   band: Difficulty,
   usedYears: ReadonlySet<number>,
+  usedArticles: ReadonlySet<string>,
   usedIds: ReadonlySet<string>,
   room: number
 ): PooledEvent[] => {
   const picked: PooledEvent[] = [];
   const claimedYears = new Set<number>();
+  const claimedArticles = new Set<string>();
   for (let index = 0; index < queue.length; index += 1) {
     if (picked.length >= room) break;
     const event = queue[index];
@@ -275,8 +277,16 @@ const takeFromFront = (
     ) {
       continue;
     }
+    const article = event.article;
+    if (
+      article.length > 0 &&
+      (usedArticles.has(article) || claimedArticles.has(article))
+    ) {
+      continue;
+    }
     if (!matchesDifficulty(event.views, band)) continue;
     claimedYears.add(event.year);
+    if (article.length > 0) claimedArticles.add(article);
     picked.push(event);
   }
   return picked;
@@ -307,9 +317,21 @@ export const dealQueue = (
   const take = (difficulty: Difficulty, band: Difficulty) => {
     const picked = chosen[difficulty];
     const usedYears = new Set(picked.map((event) => event.year));
+    const usedArticles = new Set(
+      picked
+        .map((event) => event.article)
+        .filter((article) => article.length > 0)
+    );
     const room = limit - picked.length;
     if (room <= 0) return;
-    for (const event of takeFromFront(queue, band, usedYears, usedIds, room)) {
+    for (const event of takeFromFront(
+      queue,
+      band,
+      usedYears,
+      usedArticles,
+      usedIds,
+      room
+    )) {
       usedIds.add(event.id);
       picked.push(event);
     }
@@ -346,8 +368,8 @@ export const dealLevel = (
   limit = DAILY_DECK_LIMIT
 ): TimelineEvent[] =>
   orderDeck(
-    takeFromFront(queue, difficulty, new Set(), avoidIds, limit).map((event) =>
-      copyEvent(event)
+    takeFromFront(queue, difficulty, new Set(), new Set(), avoidIds, limit).map(
+      (event) => copyEvent(event)
     ),
     random
   );
