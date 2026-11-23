@@ -2,13 +2,13 @@
 
 A Reddit game. One historical event starts on the line. Each round, drag the next event into a gap — before, after, or between the cards already placed. A right gap scores +1. A wrong gap costs a life, and the event still lands on its true year so the line stays honest.
 
-Events and births come from Wikipedia's [On this day](https://en.wikipedia.org/api/rest_v1/#/Feed/onThisDay) feed. A game starts by choosing a difficulty. Easy keeps pages with at least a million views a year, medium keeps 100,000 up to one million, and hard keeps 10,000 up to 100,000. The opening hand is one day's sample. More cards load while the first round is underway. Counts are a year-pace from the latest 60 days of pageviews, which Wikipedia can return for many pages in one request.
+Historical events and notable people come from Wikipedia's [On this day](https://en.wikipedia.org/api/rest_v1/#/Feed/onThisDay) feed. A game starts by choosing a difficulty. Easy keeps pages with at least a million views a year, medium keeps 100,000 up to one million, and hard keeps 10,000 up to 100,000. The opening hand is one day's sample. More cards load while the first round is underway. Counts are a year-pace from the latest 60 days of pageviews, which Wikipedia can return for many pages in one request.
 
 ## Fetch Domains
 
 The following domains are requested for this app:
 
-- `en.wikipedia.org` — Loads dated historical events and births from the public On this day REST feed (`/api/rest_v1/feed/onthisday`), and loads pageviews for a sample of those pages in one query (`/w/api.php?prop=pageviews`). The server caches both. No Wikipedia account or user data is sent.
+- `en.wikipedia.org` — Loads historical events and notable people from the public On this day REST feed (`/api/rest_v1/feed/onthisday`), and loads pageviews for a sample of those pages in one query (`/w/api.php?prop=pageviews`). The server caches both. No Wikipedia account or user data is sent.
 
 ## Devvit React Starter
 
