@@ -7,6 +7,8 @@ type TimelineBoardProps = {
   placed: PlacedCard[];
   layout: TimelineLayout;
   compact: boolean;
+  fullscreen?: boolean;
+  settled?: boolean;
   scrollerRef: RefObject<HTMLDivElement | null>;
   activeSlot: number | null;
   correctSlot: number | null;
@@ -15,6 +17,23 @@ type TimelineBoardProps = {
   locked: boolean;
   onPlace: (slot: number) => void;
   hint?: string | null;
+};
+
+const rowPadding = (
+  compact: boolean,
+  fullscreen: boolean,
+  settled: boolean
+): string => {
+  const x = fullscreen ? 'px-6' : compact ? 'px-3' : 'px-4';
+  const y =
+    fullscreen && settled
+      ? 'pt-10 pb-16'
+      : fullscreen
+        ? 'py-10'
+        : compact
+          ? 'py-5'
+          : 'py-8';
+  return `${x} ${y}`;
 };
 
 const slotLabel = (index: number, placed: readonly PlacedCard[]): string => {
@@ -138,6 +157,8 @@ export const TimelineBoard = ({
   placed,
   layout,
   compact,
+  fullscreen = false,
+  settled = false,
   scrollerRef,
   activeSlot,
   correctSlot,
@@ -191,14 +212,14 @@ export const TimelineBoard = ({
       data-testid="timeline"
       className={
         layout === 'row'
-          ? 'timeline-scroll min-h-0 flex-1 overflow-x-auto overflow-y-hidden'
+          ? 'timeline-scroll min-h-0 flex-1 basis-0 overflow-x-auto overflow-y-hidden'
           : 'timeline-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto'
       }
     >
       <div
         className={
           layout === 'row'
-            ? 'flex h-full min-h-full w-max min-w-full items-center justify-center px-3 py-4'
+            ? `flex h-full min-h-0 w-max min-w-full items-center justify-center ${rowPadding(compact, fullscreen, settled)}`
             : 'flex min-h-full w-full flex-col items-center px-4 py-4'
         }
       >
@@ -207,7 +228,7 @@ export const TimelineBoard = ({
           aria-label="Father Timeline"
           className={
             layout === 'row'
-              ? 'relative flex min-h-48 items-center'
+              ? 'relative flex items-center'
               : 'relative flex w-full max-w-lg flex-col items-center'
           }
         >

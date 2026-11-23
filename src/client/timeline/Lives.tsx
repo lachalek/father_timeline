@@ -78,7 +78,7 @@ export const Lives = ({
         className={
           fullscreen
             ? settled
-              ? '-ml-4 h-28'
+              ? '-ml-3 h-16'
               : '-ml-5 h-56'
             : dense
               ? '-ml-1 h-14'

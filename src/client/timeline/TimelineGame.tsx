@@ -1,5 +1,5 @@
 import { navigateTo } from '@devvit/web/client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import {
   DAILY_LOGIN_MESSAGE,
   formatDailyDate,
@@ -97,6 +97,7 @@ export const TimelineGame = () => {
         : mobile
           ? null
           : 'Drag the event onto the timeline, or tap the timeline to place the event.';
+  const doneDock = fullscreen && status.phase === 'done' && layout === 'row';
 
   return (
     <div
@@ -109,11 +110,11 @@ export const TimelineGame = () => {
       <header
         className={
           fullscreen
-            ? `relative z-30 shrink-0 px-8 ${status.phase === 'done' ? 'pt-3 pb-0' : 'pt-5 pb-1'}`
+            ? `relative z-30 shrink-0 px-8 ${doneDock ? 'pt-2 pb-0' : status.phase === 'done' ? 'pt-3 pb-0' : 'pt-5 pb-1'}`
             : `relative z-30 flex shrink-0 justify-between ${mobile ? 'items-center gap-2 px-3 py-1' : 'items-start gap-3 px-4 py-3'}`
         }
       >
-        {fullscreen ? (
+        {fullscreen && !doneDock ? (
           <div className="absolute top-5 right-8 text-right">
             <p className="text-xs tracking-[0.18em] text-[var(--muted)] uppercase">
               Score
@@ -136,7 +137,7 @@ export const TimelineGame = () => {
         ) : null}
         <div className={fullscreen ? 'flex flex-col items-center' : 'min-w-0'}>
           <h1
-            className={`logo-title ${fullscreen ? `${status.phase === 'done' ? 'pb-1' : 'pb-2'} text-[4.25rem]` : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
+            className={`logo-title ${fullscreen ? `${doneDock ? 'pb-0 text-[2.75rem]' : status.phase === 'done' ? 'pb-1 text-[4.25rem]' : 'pb-2 text-[4.25rem]'}` : mobile ? 'text-base whitespace-nowrap' : 'text-[2rem]'}`}
           >
             Father <span className="text-[var(--accent)]">Timeline</span>
           </h1>
@@ -284,6 +285,8 @@ export const TimelineGame = () => {
           placed={status.game.placed}
           layout={layout}
           compact={compact}
+          fullscreen={fullscreen}
+          settled={status.phase === 'done'}
           scrollerRef={scrollerRef}
           activeSlot={drag?.slot ?? null}
           correctSlot={feedback ? feedback.correct : null}
@@ -326,21 +329,45 @@ export const TimelineGame = () => {
       ) : null}
 
       {status.phase === 'done' ? (
-        <>
-          <LevelLeaderboard
-            board={status.boards[status.difficulty]}
-            label={DIFFICULTY_BANDS[status.difficulty].label}
-            date={status.date}
-            layout={layout}
-          />
-          <Result
-            score={status.game.score}
-            lives={status.game.lives}
-            placed={status.game.placed}
-            compact={compact}
-            onChange={status.chooseAgain}
-          />
-        </>
+        doneDock ? (
+          <div className="shrink-0 px-8 pt-10 pb-3">
+            <div className="mx-auto flex w-full max-w-5xl items-end justify-center gap-10">
+              <LevelLeaderboard
+                board={status.boards[status.difficulty]}
+                label={DIFFICULTY_BANDS[status.difficulty].label}
+                date={status.date}
+                layout={layout}
+                docked
+              />
+              <Result
+                score={status.game.score}
+                lives={status.game.lives}
+                placed={status.game.placed}
+                compact={compact}
+                docked
+                onChange={status.chooseAgain}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <LevelLeaderboard
+              board={status.boards[status.difficulty]}
+              label={DIFFICULTY_BANDS[status.difficulty].label}
+              date={status.date}
+              layout={layout}
+              fullscreen={fullscreen}
+            />
+            <Result
+              score={status.game.score}
+              lives={status.game.lives}
+              placed={status.game.placed}
+              compact={compact}
+              dense={fullscreen}
+              onChange={status.chooseAgain}
+            />
+          </>
+        )
       ) : null}
 
       {drag && playing ? (
@@ -516,16 +543,47 @@ const LeaderboardSlot = ({
   );
 };
 
+const LeaderboardCard = ({
+  board,
+  label,
+  date,
+  rankLine,
+}: {
+  board: DailyBoard;
+  label: string;
+  date: string;
+  rankLine: ReactNode;
+}) => (
+  <div className="w-full overflow-hidden rounded-2xl border border-[var(--card-line)] bg-[var(--card)] shadow-[var(--shadow)]">
+    <div className="border-b border-[var(--card-line)] px-4 py-2 text-center">
+      <p className="font-display text-xl leading-none">Daily Leaderboard</p>
+      <p className="mt-1 text-[0.65rem] tracking-[0.14em] text-[var(--muted)] uppercase">
+        {label} · {formatDailyDate(date)}
+      </p>
+    </div>
+    <ol className="space-y-0.5 px-2 py-1.5">
+      {BOARD_SLOTS.map((slot) => (
+        <LeaderboardSlot key={slot} board={board} slot={slot} roomy />
+      ))}
+    </ol>
+    {rankLine ? <div className="px-3 pb-2">{rankLine}</div> : null}
+  </div>
+);
+
 const LevelLeaderboard = ({
   board,
   label,
   date,
   layout,
+  fullscreen = false,
+  docked = false,
 }: {
   board: DailyBoard;
   label: string;
   date: string;
   layout: 'row' | 'column';
+  fullscreen?: boolean;
+  docked?: boolean;
 }) => {
   const listed = board.top.some((entry) => entry.you);
   const rankLine =
@@ -539,24 +597,32 @@ const LevelLeaderboard = ({
       </p>
     ) : null;
   if (layout === 'row') {
+    if (docked) {
+      return (
+        <section
+          data-testid="leaderboard"
+          className="min-w-0 w-full max-w-md flex-1"
+        >
+          <LeaderboardCard
+            board={board}
+            label={label}
+            date={date}
+            rankLine={rankLine}
+          />
+        </section>
+      );
+    }
     return (
-      <section data-testid="leaderboard" className="shrink-0 px-4 pt-1 pb-2">
-        <div className="mx-auto w-full max-w-md overflow-hidden rounded-2xl border border-[var(--card-line)] bg-[var(--card)] shadow-[var(--shadow)]">
-          <div className="border-b border-[var(--card-line)] px-4 py-2 text-center">
-            <p className="font-display text-xl leading-none">
-              Daily Leaderboard
-            </p>
-            <p className="mt-1 text-[0.65rem] tracking-[0.14em] text-[var(--muted)] uppercase">
-              {label} · {formatDailyDate(date)}
-            </p>
-          </div>
-          <ol className="space-y-0.5 px-2 py-1.5">
-            {BOARD_SLOTS.map((slot) => (
-              <LeaderboardSlot key={slot} board={board} slot={slot} roomy />
-            ))}
-          </ol>
-          {rankLine ? <div className="px-3 pb-2">{rankLine}</div> : null}
-        </div>
+      <section
+        data-testid="leaderboard"
+        className={`shrink-0 px-4 pb-2 ${fullscreen ? 'pt-3' : 'pt-1'}`}
+      >
+        <LeaderboardCard
+          board={board}
+          label={label}
+          date={date}
+          rankLine={rankLine}
+        />
       </section>
     );
   }
@@ -583,15 +649,19 @@ const LevelLeaderboard = ({
 
 const Result = ({
   score,
-  lives,
+  lives: _lives,
   placed,
   compact,
+  dense = false,
+  docked = false,
   onChange,
 }: {
   score: number;
   lives: number;
   placed: PlacedCard[];
   compact: boolean;
+  dense?: boolean;
+  docked?: boolean;
   onChange: () => void;
 }) => {
   const { right, wrong } = tally(placed);
@@ -603,7 +673,7 @@ const Result = ({
         : 'text-[var(--ink)]';
   return (
     <footer
-      className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--card-line)] px-4 py-2"
+      className={`flex shrink-0 gap-3 px-4 ${docked ? 'w-auto flex-col items-end border-0 py-0 pr-0' : `flex-wrap items-center justify-between border-t border-[var(--card-line)] ${dense ? 'py-1.5' : 'py-2'}`}`}
       data-testid="result"
     >
       <div>
