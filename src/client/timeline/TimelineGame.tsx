@@ -341,7 +341,6 @@ export const TimelineGame = () => {
               />
               <Result
                 score={status.game.score}
-                lives={status.game.lives}
                 placed={status.game.placed}
                 compact={compact}
                 docked
@@ -360,7 +359,6 @@ export const TimelineGame = () => {
             />
             <Result
               score={status.game.score}
-              lives={status.game.lives}
               placed={status.game.placed}
               compact={compact}
               dense={fullscreen}
@@ -649,7 +647,6 @@ const LevelLeaderboard = ({
 
 const Result = ({
   score,
-  lives: _lives,
   placed,
   compact,
   dense = false,
@@ -657,7 +654,6 @@ const Result = ({
   onChange,
 }: {
   score: number;
-  lives: number;
   placed: PlacedCard[];
   compact: boolean;
   dense?: boolean;
